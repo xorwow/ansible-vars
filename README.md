@@ -182,7 +182,7 @@ Creates, updates, or deletes a key-value pair from a vault or variable file. Whe
 
 ### Python library
 
-When using `ansible-vars` as a library, these are the relevant modules.
+When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module.
 
 #### vault module
 
