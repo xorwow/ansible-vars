@@ -981,3 +981,7 @@ if config.command in [ 'get', 'set', 'del' ]:
                     vault.save()
             print_diff(vault.diff(old_vault, show_filenames=True))
         _set_del()
+
+# Entry point for python package
+def main() -> None:
+    pass
