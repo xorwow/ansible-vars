@@ -201,7 +201,7 @@ args: ArgumentParser = ArgumentParser(
 def _prefixed_path_completer(prefix: str, **_) -> list[str]:
     has_prefix: bool = len(prefix) > 1 and prefix[:2] in ( 'h:', 'g:', 'v:' )
     resolved_prefix: str | None = { 'h:': 'host_vars', 'g:': 'group_vars', 'v:': 'vars' }[prefix[:2]] if has_prefix else None
-    if resolved_prefix and os.path.isdir(os.path.abspath(resolved_prefix + 'x')):
+    if resolved_prefix and os.path.isdir(os.path.abspath(resolved_prefix)):
         # Replace prefix with actual path
         path_prefix: str = prefix[:3] if (len(prefix) > 2 and prefix[2] == os.path.sep) else prefix[:2]
         new_prefix: str = os.path.join(resolved_prefix, prefix[len(path_prefix):])
