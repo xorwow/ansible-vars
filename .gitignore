@@ -1,0 +1,3 @@
+/src/ansible_vars/venv
+__pycache__
+/.vscode

@@ -1,0 +1,28 @@
+[build-system]
+requires = [ "hatchling" ]
+build-backend = "hatchling.build"
+
+[project]
+name = "ansible-vars"
+version = "1.0.0"
+authors = [
+  { name="xorwow", email="pip@xorwow.de" },
+]
+description = "Manage vaults and variable files for Ansible"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pyyaml", "ansible", "watchdog", "pygments", "termcolor", "argcomplete", "ruamel.yaml", "ruamel.yaml.jinja2"
+]
+
+[project.scripts]
+ansible-vars = "ansible_vars.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/xorwow/ansible-vars"
+Issues = "https://github.com/xorwow/ansible-vars/issues"
