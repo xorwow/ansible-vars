@@ -910,8 +910,8 @@ if config.command == 'file-daemon':
     signal.signal(signal.SIGINT, lambda *_: exit(0))
     # Start file daemons
     [ daemon.start(stop_on_exit=False) for daemon in daemons ]
-    print(f"{ len(daemons) } file daemons are running.", Color.GOOD)
-    print('Interrupt the program to stop them and delete the target directory.')
+    print(f"{ len(daemons) } file daemon(s) running.", Color.GOOD)
+    print('Interrupt the program to stop and delete the target directory.')
     # Idle
     try:
         while True:
