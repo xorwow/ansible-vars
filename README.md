@@ -170,7 +170,7 @@ Compares two vaults or variable files and prints a tree structure showing differ
 
 #### file-daemon
 
-Starts a daemon which mirrors the decrypted contents of one or multiple vault or variable file(s)/directories to a target directory. By default, this includes the directories `./host_vars`, `./group_vars`, and `./vars`. Changes to the source files are reflected in the decrypted targets. Changes to the target files are ignored.
+Starts a daemon which mirrors the decrypted contents of one or multiple vault or variable file(s)/directories to a target directory. By default, this includes the directories `./host_vars`, `./group_vars`, and `./vars`. Changes to the source files are reflected in the decrypted targets. Changes to the target files are ignored. For added security, consider syncing the files to a mounted ramdisk.
 
 #### get
 
