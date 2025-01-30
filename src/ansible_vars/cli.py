@@ -189,6 +189,7 @@ Deletes a node from a vault if it exists.
 }
 
 DEFAULT_EDITOR: str = os.environ.get('EDITOR', 'notepad.exe' if os.name == 'nt' else 'vi')
+DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256')
 
 args: ArgumentParser = ArgumentParser(
     prog = 'ansible-vars',
@@ -218,7 +219,10 @@ def _prefixed_path_completer(prefix: str, **_) -> list[str]:
 # Base args
 
 args.add_argument('--debug', '-d', action='store_true', help='print debug information')
-args.add_argument('--color-mode', '-C', type=str, choices=['none', 'basic', '256', 'truecolor'], default='256', help='set terminal color capability (default: 256)')
+args.add_argument(
+    '--color-mode', '-C', type=str, choices=['none', 'basic', '256', 'truecolor'], default=DEFAULT_COLOR_MODE,
+    help=f"set terminal color capability (default: { DEFAULT_COLOR_MODE })"
+)
 
 key_args = args.add_argument_group('vault key management', description=HELP['key_args'])
 # This arg can be repeated (results in [ [id, passphrase], ... ])

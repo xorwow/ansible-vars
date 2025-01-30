@@ -180,6 +180,12 @@ Displays the (decrypted) value of a specified key in a vault or variable file. S
 
 Creates, updates, or deletes a key-value pair from a vault or variable file. When setting a value, you may provide a YAML string which will be parsed into the corresponding objects. Note that these are experimental features, as the current parser has difficulty preserving the metadata for programmatic variable changes. Comments and Jinja2 blocks between the affected key and the next key in the file may be lost.
 
+### Environment variables
+
+#### AV_COLOR_MODE
+
+Set the color mode as you would with `-C <mode>`.
+
 ### Python library
 
 When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module.
