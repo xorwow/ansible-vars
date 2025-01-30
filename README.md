@@ -186,6 +186,10 @@ Creates, updates, or deletes a key-value pair from a vault or variable file. Whe
 
 Set the color mode as you would with `-C <mode>`.
 
+#### AV_TEMP_DIR
+
+Set the tempfile/staging root as you would with `-T <path>`.
+
 ### Python library
 
 When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module.
@@ -213,6 +217,10 @@ The `VaultDaemon` syncs changes from a source file or directory to a target usin
 #### constants & errors modules
 
 Custom types and exceptions, and static values. Mostly useful for type hints.
+
+## Security considerations
+
+When editing a file or creating a daemon, decrypted vaults are written to disk temporarily. The temporary files can only be accessed by the current user, but could potentially be restored through data recovery methods after deletion. To mitigate this issue, consider creating an in-RAM filesystem ("ramdisk") and using it as the staging directory (`--temp-dir <path>`) or the daemon target.
 
 ## Known issues and limitations
 

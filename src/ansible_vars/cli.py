@@ -12,7 +12,7 @@ from pathlib import Path
 from shutil import rmtree
 from builtins import print as std_print
 from subprocess import run as sys_command
-from tempfile import NamedTemporaryFile, mkdtemp
+from tempfile import NamedTemporaryFile, mkdtemp, gettempdir
 from typing import Iterator, Type, Hashable, Callable, Any
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -190,6 +190,7 @@ Deletes a node from a vault if it exists.
 
 DEFAULT_EDITOR: str = os.environ.get('EDITOR', 'notepad.exe' if os.name == 'nt' else 'vi')
 DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256')
+DEFAULT_TEMP_DIR: str = os.environ.get('AV_TEMP_DIR', gettempdir())
 
 args: ArgumentParser = ArgumentParser(
     prog = 'ansible-vars',
@@ -222,6 +223,10 @@ args.add_argument('--debug', '-d', action='store_true', help='print debug inform
 args.add_argument(
     '--color-mode', '-C', type=str, choices=['none', 'basic', '256', 'truecolor'], default=DEFAULT_COLOR_MODE,
     help=f"set terminal color capability (default: { DEFAULT_COLOR_MODE })"
+)
+args.add_argument(
+    '--temp-dir', '-T', type=str, metavar='<path>', default=DEFAULT_TEMP_DIR,
+    help=f"use this directory for vault staging instead of the system\'s TMP directory (default: { DEFAULT_TEMP_DIR })"
 )
 
 key_args = args.add_argument_group('vault key management', description=HELP['key_args'])
@@ -560,7 +565,7 @@ if config.command in [ 'create', 'edit' ]:
     if getattr(config, 'open_edit_mode', True):
         print(f"Editing vault at { vault_path }")
         # Create a secure temporary file to host the editable content
-        with NamedTemporaryFile(mode='w+', prefix='vault_', suffix='.yml') as edit_file:
+        with NamedTemporaryFile(mode='w+', dir=config.temp_dir, prefix='vault_', suffix='.yml') as edit_file:
             # Write vault contents to temp file
             editable: str = vault.as_editable()
             edit_file.write(editable)
