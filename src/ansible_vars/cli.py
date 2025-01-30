@@ -344,7 +344,9 @@ cmd_get.add_argument('vault_path', type=str, metavar='<vault path>', help='path 
     .completer = _prefixed_path_completer # type: ignore
 cmd_get.add_argument('key_segments', type=str, nargs='+', metavar='<key segment> [<key segment> ...]', help='segment(s) of the key to look up (`[<num>]` for numbers)')
 cmd_get.add_argument('--no-decrypt', '-n', action='store_false', dest='decrypt_value', help='don\'t decrypt the value if it is encrypted')
-cmd_get.add_argument('--json', '-j', action='store_true', dest='as_json', help='print only value as JSON and set the rc to 0 if the key exists or 100 if it doesn\'t')
+get_mutex_format = cmd_get.add_mutually_exclusive_group()
+get_mutex_format.add_argument('--quiet', '-q', action='store_true', help='only output the raw YAML value or set the rc to 100 if the key doesn\'t exist')
+get_mutex_format.add_argument('--json', '-j', action='store_true', dest='as_json', help='print the value as JSON or set the rc to 100 if the key doesn\'t exist')
 
 cmd_set = commands.add_parser('set', help='update a key\'s value or add a new key (experimental!)', description=HELP['cmd_set'])
 cmd_set.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to set value in') \
@@ -953,10 +955,11 @@ if config.command in [ 'get', 'set', 'del' ]:
             value = value.cipher
         if type(value) is ProtoEncryptedVar:
             value = value.plaintext
+        # Early abort
+        if (config.as_json or config.quiet) and value is Unset:
+            exit(100)
         # Output JSON
         if config.as_json:
-            if value is Unset:
-                exit(100)
             # Custom decoder for encrypted vars
             def _decode_vars(obj) -> Any:
                 if type(obj) is EncryptedVar:
@@ -966,7 +969,11 @@ if config.command in [ 'get', 'set', 'del' ]:
                 raise TypeError(f"{ type(obj) } cannot be serialized into JSON")
             json_code: str = json.dumps(value, default=_decode_vars, indent=2)
             print_json(json_code)
-        # Output text
+        # Output nothing but the raw YAML
+        elif config.quiet:
+            yaml_code: str = vault._dump_to_str(value).strip('\n') if isinstance(value, dict | list | tuple) else str(value)
+            print_yaml(yaml_code)
+        # Output text with extra messages
         else:
             print(f"Key: { format_key_path(key) }")
             if value is Unset:
