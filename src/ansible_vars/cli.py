@@ -232,7 +232,7 @@ log_args = args.add_argument_group('logging vault changes', description=HELP['lo
 log_mutex = log_args.add_mutually_exclusive_group()
 log_mutex.add_argument('--log', '-l', type=str, metavar='<log path>', help='log to an encrypted logfile (uses the encryption key)')
 log_mutex.add_argument('--log-plain', '-L', type=str, metavar='<log path>', help='log to a plain logfile (dangerous!)')
-log_args.add_argument('--logging-key', type=str, metavar='<identifier>', help='use this loaded key for logging instead of the encryption key')
+log_args.add_argument('--logging-key', '-Q', type=str, metavar='<identifier>', help='use this loaded key for logging instead of the encryption key')
 
 # Commands
 commands = args.add_subparsers(dest='command', metavar='<command>', required=True)
