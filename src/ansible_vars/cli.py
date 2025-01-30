@@ -12,7 +12,7 @@ from pathlib import Path
 from shutil import rmtree
 from builtins import print as std_print
 from subprocess import run as sys_command
-from tempfile import NamedTemporaryFile, mkdtemp, gettempdir
+from tempfile import NamedTemporaryFile, gettempdir
 from typing import Iterator, Type, Hashable, Callable, Any
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
@@ -327,8 +327,8 @@ cmd_changes.add_argument('new_vault', type=str, metavar='<new vault vault path>'
     .completer = _prefixed_path_completer # type: ignore
 cmd_changes.add_argument('--json', '-j', action='store_true', dest='as_json', help='print added/changed/removed/decrypted vars as JSON and nothing else')
 
-cmd_daemon = commands.add_parser('file-daemon', help='create a folder and sync decrypted vaults to it', description=HELP['cmd_daemon'])
-cmd_daemon.add_argument('target_root', type=str, metavar='<target root path>', help='root path the decrypted files and folders should be synced into') \
+cmd_daemon = commands.add_parser('file-daemon', help='sync decrypted vault copies into a folder', description=HELP['cmd_daemon'])
+cmd_daemon.add_argument('target_root', type=str, metavar='<target root path>', help='root folder the decrypted files and folders should be synced into (non-existent or empty)') \
     .completer = _prefixed_path_completer # type: ignore
 # This arg can be repeated (results in [ [source, rel_target], ... ])
 cmd_daemon.add_argument(
@@ -337,7 +337,7 @@ cmd_daemon.add_argument(
 ).completer = _prefixed_path_completer # type: ignore
 cmd_daemon.add_argument('--no-recurse', '-n', action='store_false', dest='recurse', help='don\'t recurse into source folders\' subfolders')
 cmd_daemon.add_argument('--no-default-dirs', '-N', action='store_false', dest='include_default_dirs', help='don\'t include default sync sources')
-cmd_daemon.add_argument('--force', '-f', action='store_true', help='if the target root already exists, delete it')
+cmd_daemon.add_argument('--force', '-f', action='store_true', help='if the target root already exists and is not empty, delete its contents')
 
 cmd_get = commands.add_parser('get', help='get a key\'s (decrypted) value if it exists', description=HELP['cmd_get'])
 cmd_get.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to get value from') \
@@ -875,11 +875,15 @@ if config.command in [ 'diff', 'changes' ]:
 
 if config.command == 'file-daemon':
     target_path: str = os.path.abspath(config.target_root)
-    if os.path.exists(target_path):
+    if os.path.isfile(target_path) or (os.path.isdir(target_path) and os.listdir(target_path)):
         if config.force:
-            rmtree(target_path, ignore_errors=True)
+            for child in map(lambda c: os.path.join(target_path, c), os.listdir(target_path)):
+                if os.path.isfile(child):
+                    os.unlink(child)
+                else:
+                    rmtree(child, ignore_errors=True)
         else:
-            raise FileExistsError(f"Cannot mount sync root to { target_path } as the path already exist")
+            raise FileExistsError(f"Cannot create sync root at { target_path } as the path already exist and is not empty")
     # Resolve sources
     if config.include_default_dirs:
         for dir_path in ( 'host_vars', 'group_vars', 'vars' ):
@@ -895,14 +899,22 @@ if config.command == 'file-daemon':
         for _path, _target in sources:
             if _target == subtarget and _path != path:
                 raise ValueError(f"Sources may not have the same target subpath, found identical target for { _path } and { path }")
-    # Create target dir
-    _target_tmp_path = mkdtemp()
-    os.rename(_target_tmp_path, target_path)
+    # Create target dir and record if we had to create it for later cleanup
+    already_existed: bool = os.path.isdir(target_path)
+    os.makedirs(target_path, mode=0o700, exist_ok=True)
     # Cleanup handler
-    def _cleanup_daemons(daemons) -> None:
+    def _cleanup_daemons(daemons, delete_root) -> None:
         print('\nStopping file daemons and cleaning up files...')
         [ daemon.stop(delete=False) for daemon in daemons ] # type: ignore
-        rmtree(target_path, ignore_errors=True)
+        # Only delete the root directory if we created it ourselves
+        if delete_root:
+            rmtree(target_path, ignore_errors=True)
+        else:
+            for child in map(lambda c: os.path.join(target_path, c), os.listdir(target_path)):
+                if os.path.isfile(child):
+                    os.unlink(child)
+                else:
+                    rmtree(child, ignore_errors=True)
         print('Goodbye.')
     # Create daemons
     def _error_callback(daemon: VaultDaemon, operation: str, err: Exception) -> None:
@@ -914,7 +926,7 @@ if config.command == 'file-daemon':
         VaultDaemon(path, target, keyring, recurse=config.recurse, error_callback=_error_callback, debug_out=_debug_out)
         for path, target in sources
     ]
-    atexit.register(_cleanup_daemons, daemons=daemons)
+    atexit.register(_cleanup_daemons, daemons=daemons, delete_root=(not already_existed))
     # Extra interrupt handler to silence error
     signal.signal(signal.SIGINT, lambda *_: exit(0))
     # Start file daemons
