@@ -51,6 +51,7 @@ ansible-vars --add-key my_key '<passphrase>' --add-key other_key '<passphrase>' 
 # Check if a string value is encrypted (no keys need to be loaded for this)
 ansible-vars is-encrypted string '<value>'
 # Recursively search the directory `./host_vars` of vault files for decrypted text matches on a regex pattern
+# `h:` is a shorthand for `./host_vars`, see tips section below for more information about advanced path resolution
 ansible-vars grep '# TODO' h:
 # Get the diff of two vaults
 ansible-vars diff my_vault.yml.old my_vault.yml
