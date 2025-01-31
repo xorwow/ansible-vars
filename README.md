@@ -150,7 +150,7 @@ Shows the amounts of encrypted and decrypted variables in a vault file. Supports
 
 #### encrypt, decrypt, is-encrypted
 
-En-/Decrypts or checks the encryption status of a file or string value. No loaded secrets are required for `is-encrypted`. Note that only full file encryption is considered in file mode, a hybrid vault with individually encrypted variables will be counted as plain.
+En-/Decrypts or checks the encryption status of a file or string value. Note that only full file encryption is considered in file mode, a hybrid vault with individually encrypted variables will be counted as plain.
 
 #### convert
 

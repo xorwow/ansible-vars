@@ -124,7 +124,7 @@ Encrypt a string and return it or fully encrypt a file in-place. This uses the c
 Decrypt a string and return it or fully decrypt a file in-place. Uses the first matching one of the loaded keys.
 ''',
     'cmd_is_enc': '''
-Check if a string or file is (fully) vault-encrypted. Works without any loaded keys.
+Check if a string or file is (fully) vault-encrypted.
 ''',
     'cmd_convert': '''
 Switch a file between full outer and full inner encryption for convenient migrating between encryption schemes.
