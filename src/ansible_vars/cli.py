@@ -612,6 +612,17 @@ if config.command in [ 'create', 'edit' ]:
                     if (changes := new_vault.changes(vault))[0]:
                         print(f"\n[!] The following vars have been decrypted in this edit:", Color.MEH)
                         print('\n'.join([ f"- { format_key_path(path) }" for path in changes[0] ]))
+                    # Inform about new plain leaf variables
+                    new_plain_leaves: list[tuple[Hashable, ...]] = []
+                    def _find_new_plain_vars(path: tuple[Hashable, ...], value: Any) -> Any:
+                        if path != ( SENTINEL_KEY, ) and type(value) is not EncryptedVar:
+                            if vault.get(path, default=Unset) is Unset:
+                                new_plain_leaves.append(path)
+                        return value
+                    vault._transform_leaves(new_vault._data, _find_new_plain_vars, tuple())
+                    if new_plain_leaves:
+                        print(f"\n[!] The following plain vars have been added in this edit:", Color.MEH)
+                        print('\n'.join([ f"- { format_key_path(path) }" for path in new_plain_leaves ]))
                     # Log changes
                     if log_enabled:
                         logger.add_log_entry(vault, new_vault, comment=f"{ config.command } command via CLI")
