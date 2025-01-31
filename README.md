@@ -190,6 +190,10 @@ Set the color mode as you would with `-C <mode>`.
 
 Set the tempfile/staging root as you would with `-T <path>`.
 
+#### AV_CREATE_PLAIN
+
+Invert the default creation mode for files: If unset or `no`, files are created with full encryption unless specified otherwise via the `--plain|-p` flag. This behavior mirrors that of `ansible-vault`. When set to `yes`, the behavior and flag are inverted as files are created without encryption by default unless specified otherwise via the `--no-plain|-P` flag.
+
 ### Python library
 
 When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module.

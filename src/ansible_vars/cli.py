@@ -192,6 +192,7 @@ Deletes a node from a vault if it exists.
 DEFAULT_EDITOR: str = os.environ.get('EDITOR', 'notepad.exe' if os.name == 'nt' else 'vi')
 DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256')
 DEFAULT_TEMP_DIR: str = os.environ.get('AV_TEMP_DIR', gettempdir())
+DEFAULT_CREATE_PLAIN: bool = os.environ.get('AV_CREATE_PLAIN', 'no').lower() in [ 'yes', 'y', 'true', 't', '1' ]
 
 args: ArgumentParser = ArgumentParser(
     prog = 'ansible-vars',
@@ -254,7 +255,11 @@ cmd_keyring.add_argument('--keys-only', '-o', action='store_false', dest='show_p
 cmd_create = commands.add_parser('create', help='create a new vault', description=HELP['cmd_create'])
 cmd_create.add_argument('vault_path', type=str, metavar='<vault path>', help='path to create a new vault at') \
     .completer = _prefixed_path_completer # type: ignore
-cmd_create.add_argument('--plain', '-p', action='store_false', dest='encrypt_vault', help='create without full file encryption')
+# Invert flag if the user wants plain mode by default
+if DEFAULT_CREATE_PLAIN:
+    cmd_create.add_argument('--no-plain', '-P', action='store_true', dest='encrypt_vault', help='create with full file encryption')
+else:
+    cmd_create.add_argument('--plain', '-p', action='store_false', dest='encrypt_vault', help='create without full file encryption')
 cmd_create.add_argument('--make-parents', '-m', action='store_true', help='create all directories in the given path')
 cmd_mutex = cmd_create.add_mutually_exclusive_group()
 cmd_mutex.add_argument('--no-edit', '-n', action='store_false', dest='open_edit_mode', help='just create the file, don\'t open it for editing')
