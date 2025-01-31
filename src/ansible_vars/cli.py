@@ -4,7 +4,7 @@
 # CLI entry point for ansible-vars
 
 # Standard library imports
-import os, re, json, atexit, signal
+import sys, os, re, json, atexit, signal
 from glob import glob
 from time import sleep
 from enum import StrEnum
@@ -499,6 +499,15 @@ def resolve_vault_path(search_path: str, create_mode: bool = False, allow_dirs: 
     return abspath
 
 ## CLI logic
+
+# Print all exceptions unless we're in debug mode
+def _exc_hook(exctype, value, traceback) -> None:
+    if config.debug:
+        sys.__excepthook__(exctype, value, traceback)
+    else:
+        print(f"{ value.__class__.__name__ }: { value }", Color.BAD)
+        print('Use --debug to get the full stacktrace')
+sys.excepthook = _exc_hook
 
 # Load vault keys
 
