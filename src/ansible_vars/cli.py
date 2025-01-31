@@ -680,7 +680,7 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
             if config.quiet:
                 exit(0 if vault.full_encryption else 100)
             else:
-                print(f"Vault is { 'encrypted' if vault.full_encryption else 'plain' }.", Color.GOOD if vault.full_encryption else Color.MEH)
+                print(f"Vault is { 'encrypted' if vault.full_encryption else 'plain or hybrid' }.", Color.GOOD if vault.full_encryption else Color.MEH)
     # String target
     else:
         is_encrypted: bool = VaultKey.is_encrypted(config.target)
