@@ -70,7 +70,7 @@ class VaultKey():
         vault_cipher = VaultKey._strip_vault_tag(vault_cipher)
         try:
             decrypted: bytes = self._vaultlib.decrypt(vault_cipher)
-            return decrypted.decode('utf-8').strip()
+            return decrypted.decode('utf-8')
         except AnsibleVaultError as e:
             if e.message.startswith('Decryption failed (no vault secrets were found that could decrypt)'):
                 raise VaultKeyMatchError(f"Could not match cipher with { self }")
