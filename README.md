@@ -242,6 +242,7 @@ When editing a file or creating a daemon, decrypted vaults are written to disk t
     - Will ignore files which cannot be parsed as an Ansible YAML file.
 - `file-daemon` command
     - Changes to file metadata (permissions, ...) are not mirrored.
+- `ansible-vars` cannot operate on files which are not (Jinja2) YAML dictionaries.
 
 ## Extension plans
 
