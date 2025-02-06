@@ -727,8 +727,7 @@ if config.command == 'convert':
         vault.save()
         print(f"Vault converted to { 'outer' if vault.full_encryption else 'inner' } encryption.", Color.GOOD)
         if not vault.full_encryption:
-            print('New vault contents:\n')
-            print_yaml(vault.as_editable(with_header=False))
+            print('Please check the vault to make sure all secrets have been encrypted', Color.MEH)
     _convert()
 
 # Grep command
