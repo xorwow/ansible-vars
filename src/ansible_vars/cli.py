@@ -4,7 +4,7 @@
 # CLI entry point for ansible-vars
 
 # Standard library imports
-import sys, os, re, json, atexit, signal
+import os, re, sys, json, atexit, signal
 from glob import glob
 from time import sleep
 from enum import StrEnum
@@ -195,7 +195,7 @@ Deletes a node from a vault if it exists.
 }
 
 DEFAULT_EDITOR: str = os.environ.get('EDITOR', 'notepad.exe' if os.name == 'nt' else 'vi')
-DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256' if os.isatty(os.pipe()[1]) else 'none')
+DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256' if sys.stdout.isatty() else 'none')
 DEFAULT_TEMP_DIR: str = os.environ.get('AV_TEMP_DIR', gettempdir())
 DEFAULT_CREATE_PLAIN: bool = os.environ.get('AV_CREATE_PLAIN', 'no').lower() in [ 'yes', 'y', 'true', 't', '1' ]
 
