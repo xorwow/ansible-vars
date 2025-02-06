@@ -182,6 +182,10 @@ Creates, updates, or deletes a key-value pair from a vault or variable file. Whe
 
 ### Environment variables
 
+#### ANSIBLE_HOME
+
+If this variable is set, the program will use its value as the working directory. When running the script from somewhere else, this way keys will be detected and paths will be resolved as if you were in your Ansible root directory.
+
 #### AV_COLOR_MODE
 
 Set the color mode as you would with `-C <mode>`.

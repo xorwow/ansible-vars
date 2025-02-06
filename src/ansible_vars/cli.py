@@ -29,6 +29,11 @@ from pygments.lexers.templates import YamlJinjaLexer
 from pygments.formatter import Formatter
 from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
 
+# If we need to change the working directory, we have to do it before loading the Ansible vault library
+# Else, keys will not be detected correctly
+ANSIBLE_HOME: str = os.environ.get('ANSIBLE_HOME', os.getcwd())
+os.chdir(ANSIBLE_HOME)
+
 # Internal module imports
 from .vault import VaultFile, EncryptedVar, ProtoEncryptedVar
 from .vault_crypt import VaultKey, VaultKeyring
