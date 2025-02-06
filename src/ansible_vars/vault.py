@@ -53,7 +53,7 @@ class EncryptedVar():
         cipher: Any = constructor.construct_scalar(node)
         if not isinstance(cipher, str):
             raise TypeError(f"Expected encrypted value to be a str, but got { type(cipher) }")
-        return EncryptedVar(str(cipher), name=node.id)
+        return EncryptedVar(cipher, name=node.id)
 
 class ProtoEncryptedVar():
     '''A variable marked to be encrypted in a `Vault` editable.'''
@@ -84,7 +84,7 @@ class ProtoEncryptedVar():
         plaintext: Any = constructor.construct_scalar(node)
         if not isinstance(plaintext, str):
             raise TypeError(f"Expected decrypted value to be a str, but got { type(plaintext) }")
-        return ProtoEncryptedVar(str(plaintext).rstrip('\n'), name=node.id)
+        return ProtoEncryptedVar(plaintext.rstrip('\n'), name=node.id)
 
 class Vault():
     '''
