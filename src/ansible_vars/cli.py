@@ -745,6 +745,10 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
     # String target
     else:
         is_encrypted: bool = VaultKey.is_encrypted(config.target)
+        # The key may not be passed properly, in which case we auto-convert literal '\n' to newlines
+        # We can assume an encrypted value should not contain any literal backslashes
+        if is_encrypted:
+            config.target = config.target.replace('\\n', '\n')
         if config.command in [ 'encrypt', 'decrypt' ]:
             if is_encrypted == (config.command == 'encrypt'):
                 print(f"Value is already { 'en' if is_encrypted else 'de' }crypted.")
