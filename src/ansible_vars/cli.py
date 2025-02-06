@@ -253,11 +253,16 @@ log_args.add_argument('--logging-key', '-Q', type=str, metavar='<identifier>', h
 # Commands
 commands = args.add_subparsers(dest='command', metavar='<command>', required=True)
 
-cmd_keyring = commands.add_parser('keyring', help='show available vault keys and their passphrases', description=HELP['cmd_keyring'])
+cmd_keyring = commands.add_parser(
+    'keyring', help='show available vault keys and their passphrases', description=HELP['cmd_keyring'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_keyring.add_argument('--json', '-j', action='store_true', dest='as_json', help='print the vault keys as JSON and nothing else')
 cmd_keyring.add_argument('--keys-only', '-o', action='store_false', dest='show_passphrases', help='show only the vault keys, not the passphrases')
 
-cmd_create = commands.add_parser('create', help='create a new vault', description=HELP['cmd_create'])
+cmd_create = commands.add_parser(
+    'create', help='create a new vault', description=HELP['cmd_create'], formatter_class=RawDescriptionHelpFormatter
+)
 cmd_create.add_argument('vault_path', type=str, metavar='<vault path>', help='path to create a new vault at') \
     .completer = _prefixed_path_completer # type: ignore
 # Invert flag if the user wants plain mode by default
@@ -272,44 +277,66 @@ cmd_mutex.add_argument(
     '--edit-command', '-e', type=str, default=DEFAULT_EDITOR, help=f"editor command to use (runs as <command> <some path>) (default: { DEFAULT_EDITOR })"
 )
 
-cmd_edit = commands.add_parser('edit', help='edit a vault', description=HELP['cmd_edit'])
+cmd_edit = commands.add_parser(
+    'edit', help='edit a vault', description=HELP['cmd_edit'], formatter_class=RawDescriptionHelpFormatter
+)
 cmd_edit.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to edit') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_edit.add_argument(
     '--edit-command', '-e', type=str, default=DEFAULT_EDITOR, help=f"editor command to use (runs as <command> <some path>) (default: { DEFAULT_EDITOR })"
 )
 
-cmd_view = commands.add_parser('view', help='show the decrypted contents of a vault')
+cmd_view = commands.add_parser(
+    'view', help='show the decrypted contents of a vault', formatter_class=RawDescriptionHelpFormatter
+)
 cmd_view.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to dump') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_view.add_argument('--json', '-j', action='store_true', dest='as_json', help='print the vault data as JSON and nothing else')
 
-cmd_info = commands.add_parser('info', help='show information about a vault\'s variables', description=HELP['cmd_info'])
+cmd_info = commands.add_parser(
+    'info', help='show information about a vault\'s variables', description=HELP['cmd_info'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_info.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to analyze') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_info.add_argument('--json', '-j', action='store_true', dest='as_json', help='print the information as JSON and nothing else')
 
-cmd_encrypt = commands.add_parser('encrypt', help='encrypt a file in-place or a string with the encryption key', description=HELP['cmd_encrypt'])
+cmd_encrypt = commands.add_parser(
+    'encrypt', help='encrypt a file in-place or a string with the encryption key', description=HELP['cmd_encrypt'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_encrypt.add_argument('target_type', type=str, choices=['file', 'string'], help='select if target is a file path or a string')
 cmd_encrypt.add_argument('target', type=str, metavar='<vault path | string>', help='path of vault or string value to encrypt') \
     .completer = _prefixed_path_completer # type: ignore
 
-cmd_decrypt = commands.add_parser('decrypt', help='decrypt a file in-place or a string', description=HELP['cmd_decrypt'])
+cmd_decrypt = commands.add_parser(
+    'decrypt', help='decrypt a file in-place or a string', description=HELP['cmd_decrypt'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_decrypt.add_argument('target_type', type=str, choices=['file', 'string'], help='select if target is a file path or a string')
 cmd_decrypt.add_argument('target', type=str, metavar='<vault path | string>', help='path of vault or string value to decrypt') \
     .completer = _prefixed_path_completer # type: ignore
 
-cmd_is_enc = commands.add_parser('is-encrypted', help='check if a file or string is vault-encrypted', description=HELP['cmd_is_enc'])
+cmd_is_enc = commands.add_parser(
+    'is-encrypted', help='check if a file or string is vault-encrypted', description=HELP['cmd_is_enc'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_is_enc.add_argument('target_type', type=str, choices=['file', 'string'], help='select if target is a file path or a string')
 cmd_is_enc.add_argument('target', type=str, metavar='<vault path | string>', help='path of vault or string value to check') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_is_enc.add_argument('--quiet', '-q', action='store_true', help='no output, only set the rc to 0 if encrypted or 100 if unencrypted')
 
-cmd_convert = commands.add_parser('convert', help='switch vault between outer (file) and inner (vars) encryption', description=HELP['cmd_convert'])
+cmd_convert = commands.add_parser(
+    'convert', help='switch vault between outer (file) and inner (vars) encryption', description=HELP['cmd_convert'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_convert.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to convert') \
     .completer = _prefixed_path_completer # type: ignore
 
-cmd_grep = commands.add_parser('grep', help='search a file or folder for a pattern', description=HELP['cmd_grep'])
+cmd_grep = commands.add_parser(
+    'grep', help='search a file or folder for a pattern', description=HELP['cmd_grep'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_grep.add_argument('query', type=str, metavar='<pattern>', help='regex query to match with targets')
 cmd_grep.add_argument('targets', type=str, nargs='+', metavar='[<target> ...]', help='file(s) or folder(s) to search recursively') \
     .completer = _prefixed_path_completer # type: ignore
@@ -324,21 +351,30 @@ grep_mutex_type.add_argument('--multiline', '-m', action='store_true', help='mak
 cmd_grep.add_argument('--json', '-j', action='store_true', dest='as_json', help='print the matches as JSON and nothing else')
 cmd_grep.add_argument('--quiet', '-q', action='store_true', help='no output, only set the rc to 0 if any matches found or 100 if none found')
 
-cmd_diff = commands.add_parser('diff', help='show line differences between two vaults', description=HELP['cmd_diff'])
+cmd_diff = commands.add_parser(
+    'diff', help='show line differences between two vaults', description=HELP['cmd_diff'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_diff.add_argument('old_vault', type=str, metavar='<old vault vault path>', help='path of "old"/base vault') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_diff.add_argument('new_vault', type=str, metavar='<new vault vault path>', help='path of "new"/changed vault') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_diff.add_argument('--context-lines', '-c', type=int, metavar='<amount>', default=3, help='show <amount> lines of context around changed lines (default: 3)')
 
-cmd_changes = commands.add_parser('changes', help='show var changes between vaults', description=HELP['cmd_changes'])
+cmd_changes = commands.add_parser(
+    'changes', help='show var changes between vaults', description=HELP['cmd_changes'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_changes.add_argument('old_vault', type=str, metavar='<old vault vault path>', help='path of "old"/base vault') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_changes.add_argument('new_vault', type=str, metavar='<new vault vault path>', help='path of "new"/changed vault') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_changes.add_argument('--json', '-j', action='store_true', dest='as_json', help='print added/changed/removed/decrypted vars as JSON and nothing else')
 
-cmd_daemon = commands.add_parser('file-daemon', help='sync decrypted vault copies into a folder', description=HELP['cmd_daemon'])
+cmd_daemon = commands.add_parser(
+    'file-daemon', help='sync decrypted vault copies into a folder', description=HELP['cmd_daemon'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_daemon.add_argument('target_root', type=str, metavar='<target root path>', help='root folder the decrypted files and folders should be synced into (non-existent or empty)') \
     .completer = _prefixed_path_completer # type: ignore
 # This arg can be repeated (results in [ [source, rel_target], ... ])
@@ -350,7 +386,10 @@ cmd_daemon.add_argument('--no-recurse', '-n', action='store_false', dest='recurs
 cmd_daemon.add_argument('--no-default-dirs', '-N', action='store_false', dest='include_default_dirs', help='don\'t include default sync sources')
 cmd_daemon.add_argument('--force', '-f', action='store_true', help='if the target root already exists and is not empty, delete its contents')
 
-cmd_get = commands.add_parser('get', help='get a key\'s (decrypted) value if it exists', description=HELP['cmd_get'])
+cmd_get = commands.add_parser(
+    'get', help='get a key\'s (decrypted) value if it exists', description=HELP['cmd_get'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_get.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to get value from') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_get.add_argument('key_segments', type=str, nargs='+', metavar='<key segment> [<key segment> ...]', help='segment(s) of the key to look up (`[<num>]` for numbers)')
@@ -359,14 +398,20 @@ get_mutex_format = cmd_get.add_mutually_exclusive_group()
 get_mutex_format.add_argument('--quiet', '-q', action='store_true', help='only output the raw YAML value or set the rc to 100 if the key doesn\'t exist')
 get_mutex_format.add_argument('--json', '-j', action='store_true', dest='as_json', help='print the value as JSON or set the rc to 100 if the key doesn\'t exist')
 
-cmd_set = commands.add_parser('set', help='update a key\'s value or add a new key (experimental!)', description=HELP['cmd_set'])
+cmd_set = commands.add_parser(
+    'set', help='update a key\'s value or add a new key (experimental!)', description=HELP['cmd_set'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_set.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to set value in') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_set.add_argument('value', type=str, metavar='<value>', help='value to set (will be loaded as YAML)')
 cmd_set.add_argument('key_segments', type=str, nargs='+', metavar='<key segment> [<key segment> ...]', help='segment(s) of the key to look up (`[<num>]` for numbers)')
 cmd_set.add_argument('--encrypt', '-e', action='store_true', dest='encrypt_value', help='encrypt the value if it is\'t encrypted yet')
 
-cmd_del = commands.add_parser('del', help='delete a key and its value if they exist (experimental!)', description=HELP['cmd_del'])
+cmd_del = commands.add_parser(
+    'del', help='delete a key and its value if they exist (experimental!)', description=HELP['cmd_del'],
+    formatter_class=RawDescriptionHelpFormatter
+)
 cmd_del.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to delete key from') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_del.add_argument('key_segments', type=str, nargs='+', metavar='<key segment> [<key segment> ...]', help='segment(s) of the key to look up (`[<num>]` for numbers)')
