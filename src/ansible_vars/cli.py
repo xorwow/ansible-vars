@@ -261,7 +261,8 @@ cmd_keyring.add_argument('--json', '-j', action='store_true', dest='as_json', he
 cmd_keyring.add_argument('--keys-only', '-o', action='store_false', dest='show_passphrases', help='show only the vault keys, not the passphrases')
 
 cmd_create = commands.add_parser(
-    'create', help='create a new vault', description=HELP['cmd_create'], formatter_class=RawDescriptionHelpFormatter
+    'create', help=f"create a new vault ({ 'hybrid/plain' if DEFAULT_CREATE_PLAIN else 'fully encrypted' } by default)",
+    description=HELP['cmd_create'], formatter_class=RawDescriptionHelpFormatter
 )
 cmd_create.add_argument('vault_path', type=str, metavar='<vault path>', help='path to create a new vault at') \
     .completer = _prefixed_path_completer # type: ignore
