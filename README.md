@@ -232,19 +232,19 @@ When editing a file or creating a daemon, decrypted vaults are written to disk t
 
 ## Known issues and limitations
 
-- YAML round-trip parser
+- YAML round-trip parser:
     - Trailing comments and Jinja2 blocks may be misaligned and a trailing newline may be inserted/removed when switching between folded (`|`, `>`) and non-foldes values.
     - The `set` and `del` commands may remove trailing comments and Jinja2 blocks.
     - Explicit start/end markers (`---`, `...`) are not preserved.
     - Supports lists, dictionaries, and scalar values.
     - Does not support custom YAML tags (`!tag`).
-- Ansible
+- Ansible:
     - Ansible only directly supports encrypted string values (although you can work around this with the `from_yaml` filter).
     - Ansible-encrypted strings must include a newline between the envelope and the cipher.
     - Ansible vault and variable file roots must be a dictionary.
-- `grep` command
+- `grep` command:
     - Will ignore files which cannot be parsed as an Ansible YAML file.
-- `file-daemon` command
+- `file-daemon` command:
     - Changes to file metadata (permissions, ...) are not mirrored.
 - `ansible-vars` cannot operate on files which are not (Jinja2) YAML dictionaries.
 - When a vault is modified, all of its ciphers will change due to new salts, even if only one encrypted variable has been changed.
