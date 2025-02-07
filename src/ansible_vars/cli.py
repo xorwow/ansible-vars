@@ -309,6 +309,7 @@ cmd_encrypt = commands.add_parser(
 cmd_encrypt.add_argument('target_type', type=str, choices=['file', 'string'], help='select if target is a file path or a string')
 cmd_encrypt.add_argument('target', type=str, metavar='<vault path | string>', help='path of vault or string value to encrypt') \
     .completer = _prefixed_path_completer # type: ignore
+cmd_encrypt.add_argument('--quiet', '-q', action='store_true', help='only output the encrypted value (ignored in file mode)')
 
 cmd_decrypt = commands.add_parser(
     'decrypt', help='decrypt a file in-place or a string', description=HELP['cmd_decrypt'],
@@ -317,6 +318,7 @@ cmd_decrypt = commands.add_parser(
 cmd_decrypt.add_argument('target_type', type=str, choices=['file', 'string'], help='select if target is a file path or a string')
 cmd_decrypt.add_argument('target', type=str, metavar='<vault path | string>', help='path of vault or string value to decrypt') \
     .completer = _prefixed_path_completer # type: ignore
+cmd_decrypt.add_argument('--quiet', '-q', action='store_true', help='only output the decrypted value (ignored in file mode)')
 
 cmd_is_enc = commands.add_parser(
     'is-encrypted', help='check if a file or string is vault-encrypted', description=HELP['cmd_is_enc'],
@@ -757,9 +759,13 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
             config.target = config.target.replace('\\n', '\n')
         if config.command in [ 'encrypt', 'decrypt' ]:
             if is_encrypted == (config.command == 'encrypt'):
-                print(f"Value is already { 'en' if is_encrypted else 'de' }crypted.")
+                if not config.quiet:
+                    print(f"Value is already { 'en' if is_encrypted else 'de' }crypted.", Color.GOOD)
+                else:
+                    print(config.target)
             else:
-                print(f"{ 'En' if not is_encrypted else 'De' }crypted value:", Color.GOOD)
+                if not config.quiet:
+                    print(f"{ 'En' if not is_encrypted else 'De' }crypted value:", Color.GOOD)
                 print(keyring.encrypt(config.target) if (config.command == 'encrypt') else keyring.decrypt(config.target))
         else:
             if config.quiet:
