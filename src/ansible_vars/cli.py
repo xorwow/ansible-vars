@@ -658,18 +658,23 @@ if config.command in [ 'create', 'edit' ]:
                             break
                     new_vault.save()
                     print(f"Saved changes!", Color.GOOD)
-                    # Warn about decrypted variables
-                    if (decrypted_vars := new_vault.changes(vault)[0]):
-                        print(f"\n[!] The following vars have been decrypted in this edit:", Color.MEH)
-                        print('\n'.join([ f"- { format_key_path(path) }" for path in decrypted_vars ]))
-                    # Inform about new plain leaf variables
+                    decrypted_vars:   list[tuple[Hashable, ...]] = []
                     new_plain_leaves: list[tuple[Hashable, ...]] = []
                     def _find_new_plain_vars(path: tuple[Hashable, ...], value: Any) -> Any:
                         if path != ( SENTINEL_KEY, ) and type(value) is not EncryptedVar:
-                            if vault.get(path, default=Unset) != value and path not in decrypted_vars:
-                                new_plain_leaves.append(path)
+                            if (old_value := vault.get(path, default=Unset)) != value:
+                                std_print(path[-1], type(old_value), type(value))
+                                if type(old_value) is EncryptedVar:
+                                    decrypted_vars.append(path)
+                                else:
+                                    new_plain_leaves.append(path)
                         return value
                     vault._transform_leaves(new_vault._data, _find_new_plain_vars, tuple())
+                    # Warn about decrypted variables
+                    if decrypted_vars:
+                        print(f"\n[!] The following vars have been decrypted in this edit:", Color.MEH)
+                        print('\n'.join([ f"- { format_key_path(path) }" for path in decrypted_vars ]))
+                    # Warn about new plain leaf variables
                     if not new_vault.full_encryption and new_plain_leaves:
                         print(f"\n[!] The following plain vars have been added in this edit:", Color.MEH)
                         print('\n'.join([ f"- { format_key_path(path) }" for path in new_plain_leaves ]))
