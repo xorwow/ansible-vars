@@ -271,9 +271,9 @@ if DEFAULT_CREATE_PLAIN:
 else:
     cmd_create.add_argument('--plain', '-p', action='store_false', dest='encrypt_vault', help='create without full file encryption')
 cmd_create.add_argument('--make-parents', '-m', action='store_true', help='create all directories in the given path')
-cmd_mutex = cmd_create.add_mutually_exclusive_group()
-cmd_mutex.add_argument('--no-edit', '-n', action='store_false', dest='open_edit_mode', help='just create the file, don\'t open it for editing')
-cmd_mutex.add_argument(
+create_mutex = cmd_create.add_mutually_exclusive_group()
+create_mutex.add_argument('--no-edit', '-n', action='store_false', dest='open_edit_mode', help='just create the file, don\'t open it for editing')
+create_mutex.add_argument(
     '--edit-command', '-e', type=str, default=DEFAULT_EDITOR, help=f"editor command to use (runs as <command> <some path>) (default: { DEFAULT_EDITOR })"
 )
 
