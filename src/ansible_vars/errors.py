@@ -2,6 +2,14 @@
 
 # YAML parsing
 
+class UnsupportedGenericFileOperation(Exception):
+    '''The requested operation or flag is not available for generic (i.e. non-YAML-dictionary) files.'''
+
+    def __init__(self, *args: object, operation: str | None = None) -> None:
+        super().__init__(
+            f"The requested operation or flag is not available for generic files{ f': { operation }' * bool(operation) }", *args
+        )
+
 class YAMLFormatError(Exception):
     '''The supplied content is not a valid Ansible YAML file. Supports passing the triggering parent exception.'''
     

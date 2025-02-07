@@ -39,7 +39,7 @@ from .vault import VaultFile, EncryptedVar, ProtoEncryptedVar
 from .vault_crypt import VaultKey, VaultKeyring
 from .util import DiffFileLogger, VaultDaemon
 from .constants import Unset, MatchLocation, SENTINEL_KEY
-from .errors import YAMLFormatError
+from .errors import YAMLFormatError, UnsupportedGenericFileOperation
 
 ## CLI argument parsing
 
@@ -630,7 +630,30 @@ if config.command in [ 'create', 'edit' ]:
         vault = VaultFile.create(vault_path, full_encryption=config.encrypt_vault, permissions=0o600, keyring=keyring)
         print(f"Created { 'encrypted' if vault.full_encryption else 'plain' } vault at { vault_path }", Color.GOOD)
     else:
-        vault = VaultFile(vault_path, keyring=keyring)
+        try:
+            vault = VaultFile(vault_path, keyring=keyring)
+        except YAMLFormatError:
+            print('Invalid vault format, will be treated as a generic file', Color.MEH)
+            with NamedTemporaryFile(mode='w+', dir=config.temp_dir, prefix='vaultlike_') as edit_file:
+                with open(vault_path, 'r+') as file:
+                    # Load and decrypt file
+                    content: str = file.read()
+                    if (is_enc := VaultKey.is_encrypted(content)):
+                        content = keyring.decrypt(content)
+                    # Let user edit the content in a temporary file
+                    edit_file.write(content)
+                    edit_file.flush()
+                    sys_command(f"{ config.edit_command } { edit_file.name }", shell=True)
+                    edit_file.seek(0)
+                    # Encrypt the new content and write it back
+                    new_content: str = edit_file.read()
+                    if is_enc:
+                        new_content = keyring.encrypt(new_content)
+                    file.seek(0)
+                    file.truncate()
+                    file.write(new_content)
+                    print(f"Saved changes!", Color.GOOD)
+            exit()
     # Open vault for edit mode
     if getattr(config, 'open_edit_mode', True):
         print(f"Editing vault at { vault_path }")
@@ -639,6 +662,7 @@ if config.command in [ 'create', 'edit' ]:
             # Write vault contents to temp file
             editable: str = vault.as_editable()
             edit_file.write(editable)
+            edit_file.flush()
             while True:
                 # Open editor and wait for it to close
                 edit_file.seek(0)
@@ -692,11 +716,18 @@ if config.command in [ 'create', 'edit' ]:
 
 if config.command == 'view':
     vault_path: str = resolve_vault_path(config.vault_path)
-    vault = VaultFile(vault_path, keyring=keyring)
-    if config.as_json:
-        print_json(vault.as_json())
-    else:
-        print_yaml(vault.as_plain())
+    try:
+        vault = VaultFile(vault_path, keyring=keyring)
+        if config.as_json:
+            print_json(vault.as_json())
+        else:
+            print_yaml(vault.as_plain())
+    except YAMLFormatError:
+        if config.as_json:
+            raise UnsupportedGenericFileOperation(operation='--json')
+        with open(vault_path) as file:
+            content: str = file.read()
+            print(keyring.decrypt(content) if VaultKey.is_encrypted(content) else content)
 
 # Info command
 
@@ -737,19 +768,37 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
     # File target
     if config.target_type == 'file':
         vault_path: str = resolve_vault_path(config.target)
-        vault = VaultFile(vault_path, keyring=keyring)
+        is_generic: bool = False
+        try:
+            vault = VaultFile(vault_path, keyring=keyring)
+            is_enc: bool = vault.full_encryption
+        except YAMLFormatError as e:
+            print('Invalid vault format, will be treated as a generic file', Color.MEH)
+            with open(vault_path) as file:
+                is_enc = VaultKey.is_encrypted(file.read())
+            is_generic = True
         if config.command in [ 'encrypt', 'decrypt' ]:
-            if vault.full_encryption == (config.command == 'encrypt'):
-                print(f"Vault is already { 'en' if vault.full_encryption else 'de' }crypted.")
+            if is_enc == (config.command == 'encrypt'):
+                print(f"Vault is already { 'en' if is_enc else 'de' }crypted.", Color.GOOD)
             else:
-                vault.full_encryption = (config.command == 'encrypt')
-                vault.save()
-                print(f"Vault { 'en' if vault.full_encryption else 'de' }crypted.", Color.GOOD)
+                is_enc = (config.command == 'encrypt')
+                # Generic file
+                if is_generic:
+                    with open(vault_path, 'r+') as file:
+                        content: str = file.read()
+                        file.seek(0)
+                        file.truncate()
+                        file.write(keyring.encrypt(content) if is_enc else keyring.decrypt(content))
+                # Vault file
+                else:
+                    vault.full_encryption = is_enc # type: ignore
+                    vault.save() # type: ignore
+                print(f"Vault { 'en' if is_enc else 'de' }crypted.", Color.GOOD)
         else:
             if config.quiet:
-                exit(0 if vault.full_encryption else 100)
+                exit(0 if is_enc else 100)
             else:
-                print(f"Vault is { 'encrypted' if vault.full_encryption else 'plain or hybrid' }.", Color.GOOD if vault.full_encryption else Color.MEH)
+                print(f"Vault is { 'fully encrypted' if is_enc else 'plain or hybrid' }.", Color.GOOD if is_enc else Color.MEH)
     # String target
     else:
         is_encrypted: bool = VaultKey.is_encrypted(config.target)

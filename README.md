@@ -246,7 +246,8 @@ When editing a file or creating a daemon, decrypted vaults are written to disk t
     - Will ignore files which cannot be parsed as an Ansible YAML file.
 - `file-daemon` command:
     - Changes to file metadata (permissions, ...) are not mirrored.
-- `ansible-vars` cannot operate on files which are not (Jinja2) YAML dictionaries.
+- `ansible-vars` does not support files which are not (Jinja2) YAML dictionaries, except for limited support in these commands:
+    - `edit`, `view` (without `--json` support), `encrypt`, `decrypt`, `is-encrypted`
 - When a vault is modified, all of its ciphers will change due to new salts, even if only one encrypted variable has been changed.
 
 ## Extension plans
