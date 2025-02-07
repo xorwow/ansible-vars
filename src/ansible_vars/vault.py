@@ -6,16 +6,14 @@ from io import StringIO
 from functools import reduce
 from typing import Type, Hashable, Callable, Any
 from types import MappingProxyType
-from collections import OrderedDict
 from difflib import unified_diff
 
 # External library imports
 from ruamel.yaml import YAML
 from ruamel.yaml.nodes import ScalarNode
-from ruamel.yaml.parser import CommentToken
 from ruamel.yaml.representer import Representer
 from ruamel.yaml.constructor import Constructor
-from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.comments import CommentedMap
 
 # Internal module imports
 from .constants import ThrowError, octal, Indexable, ChangeList, MatchLocation, SENTINEL_KEY, EDIT_MODE_HEADER, ENCRYPTED_VAR_TAG
@@ -205,7 +203,7 @@ class Vault():
         A read-only dictionary of the vault's variables, with any EncryptedVars already decrypted.
         Note that the state is frozen whenever you access this property, and not updated when the vault changes.
         '''
-        copy: dict = self._data.copy()
+        copy: dict = Vault._copy_data(self._data)
         copy.pop(SENTINEL_KEY, None)
         def _traverse_and_decrypt(root: Any) -> Any:
             if isinstance(root, dict):
@@ -495,7 +493,7 @@ class Vault():
 
     def as_plain(self) -> str:
         '''Returns the vault in fully decrypted form as Jinja2 YAML code with the original metadata.'''
-        copy: CommentedMap = self._data.copy()
+        copy: CommentedMap = Vault._copy_data(self._data)
         #copy.pop(SENTINEL_KEY, None) # <-- would break a file containing only metadata and the sentinel key
         def _decrypt_leaf(_: tuple[Hashable, ...], value: Any) -> Any:
             '''Transforms EncryptedVar leaves into decrypted strings.'''
@@ -510,7 +508,7 @@ class Vault():
         Returns the vault as Jinja2 YAML code with the original metadata.
         It is prepared for editing and later re-encryption with YAML tags and a static explanatory header.
         '''
-        copy: CommentedMap = self._data.copy()
+        copy: CommentedMap = Vault._copy_data(self._data)
         def _convert_to_proto(path: tuple[Hashable, ...], value: Any) -> Any:
             '''Marks encrypted leaves for encryption after editing.'''
             if type(value) is not EncryptedVar:
@@ -526,7 +524,7 @@ class Vault():
 
     def as_encrypted(self) -> str:
         '''Returns the vault as Jinja2 YAML code with the original metadata, with encrypted variables and full encryption if enabled.'''
-        copy: CommentedMap = self._data.copy()
+        copy: CommentedMap = Vault._copy_data(self._data)
         yaml_content: str = self._dump_to_str(copy)
         yaml_content = Vault._remove_sentinel(yaml_content)
         if self.full_encryption:
@@ -566,6 +564,23 @@ class Vault():
         builder = StringIO()
         self._parser.dump(data, builder)
         return builder.getvalue().strip('\n') + '\n'
+
+    @staticmethod
+    def _copy_data(data: Any) -> Any:
+        '''
+        Create a deep copy of any data, using the object's `copy()` method for dicts and lists.
+        Parser dicts and lists contain special data, and their copy function will preserve that.
+        The built-in `copy.deepcopy()` would require a `__deepcopy__` method for this to work.
+        Copying works for dicts and lists. Everything else is referenced normally.
+        Not thread-safe.
+        '''
+        if (is_dict := isinstance(data, dict)) or isinstance(data, list):
+            copy = data.copy()
+            keys = copy.keys() if is_dict else range(len(copy)) # type: ignore
+            for key in keys:
+                copy[key] = Vault._copy_data(copy[key])
+            return copy
+        return data
 
     # Comparing to older versions of this vault
 
@@ -653,7 +668,7 @@ class Vault():
     def copy(self) -> 'Vault':
         '''Create a copy of this `Vault` instance.'''
         copy = Vault('', self.keyring)
-        copy._data = self._data.copy()
+        copy._data = Vault._copy_data(self._data)
         copy.full_encryption = self.full_encryption
         copy.keyring = self.keyring
         copy._parser = self._parser
@@ -804,7 +819,7 @@ class VaultFile(Vault):
     def copy(self) -> 'VaultFile':
         '''Create a copy of this `VaultFile` instance.'''
         copy: VaultFile = self.from_editable(self, '')
-        copy._data = self._data.copy()
+        copy._data = VaultFile._copy_data(self._data)
         copy.full_encryption = self.full_encryption
         copy.keyring = self.keyring
         copy._parser = self._parser
