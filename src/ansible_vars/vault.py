@@ -77,7 +77,7 @@ class ProtoEncryptedVar():
 
     @classmethod
     def to_yaml(ProtoEncryptedVar: Type['ProtoEncryptedVar'], representer: Representer, var: 'ProtoEncryptedVar') -> Any:
-        return representer.represent_scalar(ENCRYPTED_VAR_TAG, var.plaintext, style='\'')
+        return representer.represent_scalar(ENCRYPTED_VAR_TAG, var.plaintext, style=('|' if '\n' in var.plaintext else ''))
 
     @classmethod
     def from_yaml(ProtoEncryptedVar: Type['ProtoEncryptedVar'], constructor: Constructor, node: ScalarNode) -> 'ProtoEncryptedVar':
