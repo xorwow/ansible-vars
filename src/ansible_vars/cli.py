@@ -701,7 +701,6 @@ if config.command in [ 'create', 'edit' ]:
                     def _find_new_plain_vars(path: tuple[Hashable, ...], value: Any) -> Any:
                         if path != ( SENTINEL_KEY, ) and type(value) is not EncryptedVar:
                             if (old_value := vault.get(path, default=Unset)) != value:
-                                std_print(path[-1], type(old_value), type(value))
                                 if type(old_value) is EncryptedVar:
                                     decrypted_vars.append(path)
                                 else:
