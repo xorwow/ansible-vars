@@ -84,6 +84,10 @@ Specify vault keys to load for en-/decryption. Not required for vars files with 
 A key is a combination of an identifier (can be a vault ID or anything else, ideally unique) and a passphrase.
 By default, available keys are auto-detected if your current directory contains an Ansible config and appended to the ones you supplied.
 If no explicit encryption key is specified, the first supplied/available key is used.
+
+[!] When editing a hybrid vault file, changing even a single variable will change all variables' ciphers, as salts are generated randomly.
+You can prevent this by passing a fixed salt via `-S <salt>`, which will result in any plaintext always resolving to the same cipher.
+For Ansible's AES-256, a length of at least 32 characters is recommended.
 ''',
     'log_args': '''
 Log a diff of any vault changes performed with this program to an encrypted or plain logfile, creating it if necessary.
@@ -198,6 +202,7 @@ DEFAULT_EDITOR: str = os.environ.get('EDITOR', 'notepad.exe' if os.name == 'nt' 
 DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256' if sys.stdout.isatty() else 'none')
 DEFAULT_TEMP_DIR: str = os.environ.get('AV_TEMP_DIR', gettempdir())
 DEFAULT_CREATE_PLAIN: bool = os.environ.get('AV_CREATE_PLAIN', 'no').lower() in [ 'yes', 'y', 'true', 't', '1' ]
+DEFAULT_SALT: str | None = os.environ.get('AV_SALT', None)
 
 args: ArgumentParser = ArgumentParser(
     prog = 'ansible-vars',
@@ -243,6 +248,10 @@ key_args.add_argument(
 )
 key_args.add_argument('--no-detect-keys', '-D', action='store_false', dest='detect_keys', help='disable automatic key detection')
 key_args.add_argument('--encryption-key', '-K', type=str, metavar='<identifier>', help='which of the loaded keys to use for encryption')
+key_args.add_argument(
+    '--fixed-salt', '-S', type=str, metavar='<salt>', default=DEFAULT_SALT,
+    help='a fixed salt to use for encryption (should be 32+ chars!)'
+)
 
 log_args = args.add_argument_group('logging vault changes', description=HELP['log_args'])
 log_mutex = log_args.add_mutually_exclusive_group()
@@ -565,7 +574,7 @@ sys.excepthook = _exc_hook
 # Load vault keys
 
 _explicit_keys: list[VaultKey] = [ VaultKey(passphrase, vault_id=id) for id, passphrase in config.keys ]
-keyring = VaultKeyring(_explicit_keys.copy(), detect_available_keys=config.detect_keys)
+keyring = VaultKeyring(_explicit_keys.copy(), detect_available_keys=config.detect_keys, default_salt=config.fixed_salt)
 
 if config.encryption_key:
     keyring.default_encryption_key = keyring.key_by_id(config.encryption_key)
@@ -575,6 +584,8 @@ try:
     debug(f"Encryption key: { keyring.encryption_key.id }")
 except:
     debug('Encryption key: unavailable')
+if config.fixed_salt:
+    debug(f"Using fixed encryption salt: { config.fixed_salt }")
 
 # Set up logging
 

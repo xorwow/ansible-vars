@@ -54,12 +54,12 @@ class VaultKey():
         '''
         return VaultLib.is_encrypted(VaultKey._strip_vault_tag(test_me))
 
-    def encrypt(self, plain: str) -> str:
-        '''Encrypts a string using this `VaultKey`'s secret.'''
+    def encrypt(self, plain: str, salt: str | None = None) -> str:
+        '''Encrypts a string using this `VaultKey`'s secret. You can specify an optional fixed salt (ideally 32+ chars).'''
         # Pass our secret directly to the encrypt call to skip expensive secret matching
         # Beware: the encrypt function takes a `secret`, but means just the VaultSecret and not a tuple of (vault_id, VaultSecret)
         # In other calls, `secret` or `secrets` may refer to the tuple(s)
-        return self._vaultlib.encrypt(plain, secret=self.secret, vault_id=self.id).decode('utf-8').strip()
+        return self._vaultlib.encrypt(plain, secret=self.secret, vault_id=self.id, salt=salt).decode('utf-8').strip()
 
     def decrypt(self, vault_cipher: str) -> str:
         '''
@@ -96,6 +96,7 @@ class VaultKeyring():
             self,
             keys: list[VaultKey] | None = None,
             default_encryption_key: VaultKey | None = None,
+            default_salt: str | None = None,
             detect_available_keys: bool = True
         ) -> None:
         '''
@@ -107,9 +108,13 @@ class VaultKeyring():
         
         When encrypting data, you can specify an explicit `VaultKey` to use. If none is specified, `default_encryption_key` is used.
         If no explicit or default keys are available, the first key of the `keys` parameter is used.
+
+        You can also set a fixed salt to use for encryption tasks, either passing it to the `encrypt` function directly
+        or as a `default_salt` here. A length of at least 32 chars is recommended for Ansible's AES-256.
         '''
         self.keys: list[VaultKey] = keys or []
         self.default_encryption_key: VaultKey | None = default_encryption_key
+        self.default_salt: str | None = default_salt
         if detect_available_keys:
             self.keys.extend(VaultKeyring.load_cli_secrets())
     
@@ -124,16 +129,15 @@ class VaultKeyring():
             raise NoVaultKeysError('No vault keys available for encryption')
         return self.default_encryption_key or self.keys[0]
 
-    def encrypt(self, plain: str, key: VaultKey | None = None) -> str:
+    def encrypt(self, plain: str, key: VaultKey | None = None, salt: str | None = None) -> str:
         '''
         Encrypts the given vault data using the supplied `VaultKey`.
         If no key is supplied, the `VaultKeyring`'s `default_encryption_key` is used.
         If that key is also unset, the first key of the `VaultKeyring`'s `keys` is used.
+        You can specify an optional fixed salt for encrypting (ideally 32+ chars).
         '''
         # If no key is provided, use the default encryption key or first key in `keys`
-        if not key:
-            key = self.encryption_key
-        return key.encrypt(plain)
+        return (key or self.encryption_key).encrypt(plain, salt=(salt or self.default_salt))
 
     def decrypt(self, vault_cipher: str, key: VaultKey | None = None) -> str:
         '''
@@ -143,7 +147,7 @@ class VaultKeyring():
 
         Expects a cipher with optional YAML tag preamble (`!vault | $ANSIBLE_VAULT;<options>\\n<cipher>`).
         '''
-        if not key and not self.keys:
+        if not (key or self.keys):
             raise NoVaultKeysError('No vault keys available for decryption')
         if key:
             return key.decrypt(vault_cipher)

@@ -83,6 +83,10 @@ By default, the first loaded key is used for all encryption tasks. Note that aut
 
 You can disable automatic key detection by flagging `--no-encrypt-keys|-D`. Use `ansible-vars keyring` to view all available keys.
 
+#### Encryption salts
+
+Each time you edit a vault or otherwise encrypt a value, a randomly generated salt is used so even identical plain values will result in unique ciphers. However, this also means that each time a single encrypted variable is edited, all other ciphers in the vault will change as well. You can avoid this by passing a fixed salt via `--fixed-salt|-S <salt>`. Note that it should be at least 32 characters long and sufficiently random for Ansible's AES-256 encryption, and that you won't benefit from unique ciphers for identical plaintexts anymore.
+
 ### Diff logging
 
 **TL;DR:** You can use `-l <log directory>` to log changes to edited vaults to a vault-encrypted log file.
@@ -198,6 +202,10 @@ Set the tempfile/staging root as you would with `-T <path>`.
 
 Invert the default creation mode for files: If unset or `no`, files are created with full encryption unless specified otherwise via the `--plain|-p` flag. This behavior mirrors that of `ansible-vault`. When set to `yes`, the behavior and flag are inverted as files are created without encryption by default unless specified otherwise via the `--no-plain|-P` flag.
 
+#### AV_SALT
+
+Set a fixed salt as you would with `-S <salt>`.
+
 ### Python library
 
 When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module.
@@ -248,7 +256,6 @@ When editing a file or creating a daemon, decrypted vaults are written to disk t
     - Changes to file metadata (permissions, ...) are not mirrored.
 - `ansible-vars` does not support files which are not (Jinja2) YAML dictionaries, except for limited support in these commands:
     - `edit`, `view` (without `--json` support), `encrypt`, `decrypt`, `is-encrypted`
-- When a vault is modified, all of its ciphers will change due to new salts, even if only one encrypted variable has been changed.
 
 ## Extension plans
 
