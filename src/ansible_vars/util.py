@@ -338,7 +338,7 @@ class VaultDaemon(FileSystemEventHandler):
                         content: str = src.read()
                     with open(self.target_file, 'w') as tgt:
                         try:
-                            tgt.write(Vault(content, keyring=self.keyring).as_editable(with_header=False))
+                            tgt.write(Vault(content, keyring=self.keyring).as_plain())
                             self.debug(f"Created/Updated file { self.target_file } from vault contents")
                         except:
                             tgt.write(content)
@@ -373,7 +373,7 @@ class VaultDaemon(FileSystemEventHandler):
                 content: str = src.read()
             with open(target_path, 'w') as tgt:
                 try:
-                    tgt.write(Vault(content, keyring=self.keyring).as_editable(with_header=False))
+                    tgt.write(Vault(content, keyring=self.keyring).as_plain())
                     self.debug(f"Created/Updated file { target_path } from vault contents")
                 except:
                     tgt.write(content)
