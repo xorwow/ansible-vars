@@ -156,6 +156,10 @@ Shows the amounts of encrypted and decrypted variables in a vault file. Supports
 
 En-/Decrypts or checks the encryption status of a file or string value. Note that only full file encryption is considered in file mode, a hybrid vault with individually encrypted variables will be counted as plain.
 
+### rekey
+
+Re-encrypts a vault file with a different encryption key and/or salt. The key specified in the global `--encryption-key|-K <identifier>` flag is used for encryption, along with an optional fixed salt set via the global `--fixed-salt|-S <salt>` flag.
+
 #### convert
 
 Convenience function to convert between fully encrypted vaults and hybrid vaults. Useful if you wish to convert your "legacy" fully encrypted vaults to plain files with all string values individually encrypted. Works both ways.

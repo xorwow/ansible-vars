@@ -135,6 +135,10 @@ Decrypt a string and return it or fully decrypt a file in-place. Uses the first 
     'cmd_is_enc': '''
 Check if a string or file is (fully) vault-encrypted.
 ''',
+    'cmd_rekey': '''
+Update a vault's ciphers with a new encryption key and/or salt.
+The key referenced by `--encryption-key|-K <identifier>` and/or the salt set by `--fixed-salt|-S <salt>` are used for re-encryption.
+''',
     'cmd_convert': '''
 Switch a file between full outer and full inner encryption for convenient migrating between encryption schemes.
 If the file is already fully encrypted, decrypt it in-place and encrypt all leaf values individually.
@@ -337,6 +341,13 @@ cmd_is_enc.add_argument('target_type', type=str, choices=['file', 'string'], hel
 cmd_is_enc.add_argument('target', type=str, metavar='<vault path | string>', help='path of vault or string value to check') \
     .completer = _prefixed_path_completer # type: ignore
 cmd_is_enc.add_argument('--quiet', '-q', action='store_true', help='no output, only set the rc to 0 if encrypted or 100 if unencrypted')
+
+cmd_rekey = commands.add_parser(
+    'rekey', help='update a vault\'s encryption key (from -K) and/or salt (from -S)', description=HELP['cmd_rekey'],
+    formatter_class=RawDescriptionHelpFormatter
+)
+cmd_rekey.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to rekey') \
+    .completer = _prefixed_path_completer # type: ignore
 
 cmd_convert = commands.add_parser(
     'convert', help='switch vault between outer (file) and inner (vars) encryption', description=HELP['cmd_convert'],
@@ -831,6 +842,21 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
                 exit(0 if is_encrypted else 100)
             else:
                 print(f"Value is { 'encrypted' if is_encrypted else 'plain' }.", Color.GOOD if is_encrypted else Color.MEH)
+
+# Rekey command
+
+if config.command == 'rekey':
+    vault_path: str = resolve_vault_path(config.vault_path)
+    if not config.encryption_key:
+        print(f"No explicit encryption key specified, falling back to '{ keyring.encryption_key.id }'", Color.MEH)
+    # Since ciphers are usually not changed from load to save, we force re-encryption by loading from an editable
+    vault = VaultFile(vault_path, keyring=keyring)
+    vault = VaultFile.from_editable(vault, vault.as_editable())
+    vault.save()
+    print(
+        f"Re-encrypted vault with key '{ keyring.encryption_key.id }' and a { 'fixed' if config.fixed_salt else 'random' } salt",
+        Color.GOOD
+    )
 
 # Convert command
 
