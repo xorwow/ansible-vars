@@ -776,12 +776,12 @@ if config.command == 'info':
         if encrypted_leaves:
             print('\n'.join([ f"- { format_key_path(key) }" for key in encrypted_leaves ]))
         else:
-            print('No encrypted vars')
+            print('None', Color.MEH)
         print('\nPlain leaf values:', Color.GOOD)
-        if encrypted_leaves:
+        if plain_leaves:
             print('\n'.join([ f"- { format_key_path(key) }" for key in plain_leaves ]))
         else:
-            print('No plain vars')
+            print('None', Color.MEH)
 
 # Encrypt & Decrypt & Is-Encrypted commands
 
