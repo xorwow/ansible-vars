@@ -39,7 +39,7 @@ ENCRYPTED_VAR_TAG: str = u'!enc'
 # Will be searched for and removed on re-parsing
 EDIT_MODE_HEADER: str = f"""
 #~ DO NOT EDIT THIS HEADER
-#~ Variables which should be encrypted are formatted like '{ ENCRYPTED_VAR_TAG } <value>'.
+#~ Variables which should be encrypted are formatted as '{ ENCRYPTED_VAR_TAG } <value>'.
 #~ Do not remove this prefix unless you want to convert them to plain variables.
 #~ Add the prefix to any string variable you want to be encrypted.
 
