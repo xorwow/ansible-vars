@@ -81,7 +81,7 @@ To use any functions of `ansible-vars` that require encrypting or decrypting dat
 
 By default, the first loaded key is used for all encryption tasks. Note that auto-detected keys are inserted into the application's keyring *after* your explicitly added ones, so the first key you add will usually be the encryption key. If you want to make sure a certain key is used, reference its identifier using `--encryption-key|-K <identifier>`.
 
-You can disable automatic key detection by flagging `--no-encrypt-keys|-D`. Use `ansible-vars keyring` to view all available keys.
+You can disable automatic key detection by flagging `--no-detect-keys|-D`. Use `ansible-vars keyring` to view all available keys.
 
 #### Encryption salts
 
