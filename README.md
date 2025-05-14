@@ -255,6 +255,7 @@ When editing a file or creating a daemon, decrypted vaults are written to disk t
     - Ansible only directly supports encrypted string values (although you can work around this with the `from_yaml` filter).
     - Ansible-encrypted strings must include a newline between the envelope and the cipher.
     - Ansible vault and variable file roots must be a dictionary.
+        - Due to parsing limitations in `ansible-vars`, a file with explicit JSON style '{}' as the outermost level is currently not supported.
 - `grep` command:
     - Will ignore files which cannot be parsed as an Ansible YAML file.
 - `file-daemon` command:
