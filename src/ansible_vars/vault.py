@@ -274,7 +274,7 @@ class Vault():
                 if VaultKey.is_encrypted(_value):
                     return EncryptedVar(_value, name=str(path[-1]))
                 return EncryptedVar(self.keyring.encrypt(_value), name=str(path[-1]))
-            Vault._transform_leaves(value, _encrypt_leaf, tuple())
+            Vault._transform_leaves(value, _encrypt_leaf, tuple()) if isinstance(value, dict | list) else _encrypt_leaf(tuple(), value)
         # Resolve chain and create parents if necessary, then set value for last item
         parent: Any = self._data
         par_path: str = ''
@@ -541,6 +541,8 @@ class Vault():
         Runs the transform_fn on all leaves of the indexable object recursively, passing the current path and the leaf object as a tuple.
         The leaves are replaced by the result of the function call.
         '''
+        if not isinstance(indexable, dict | list):
+            raise Exception(f"Calling _transform_leaves on a non-indexable object is not allowed, got { type(indexable) }")
         keys: list[Hashable] = list(indexable.keys()) if isinstance(indexable, dict) else list(range(len(indexable)))
         for key in keys:
             _curr_path: tuple[Hashable, ...] = curr_path + ( key, )
