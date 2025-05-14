@@ -85,7 +85,7 @@ You can disable automatic key detection by flagging `--no-encrypt-keys|-D`. Use 
 
 #### Encryption salts
 
-Each time you edit a vault or otherwise encrypt a value, a randomly generated salt is used so even identical plain values will result in unique ciphers. However, this also means that each time a single encrypted variable is edited, all other ciphers in the vault will change as well. You can avoid this by passing a fixed salt via `--fixed-salt|-S <salt>`. Note that it should be at least 32 characters long and sufficiently random for Ansible's AES-256 encryption, and that you won't benefit from unique ciphers for identical plaintexts anymore.
+Each time you edit a vault or otherwise encrypt a value, a randomly generated salt is used so even identical plain values will result in unique ciphers. However, this also means that each time a single encrypted variable is edited, all other ciphers in the vault will change as well. You can avoid this by passing a fixed salt via `--fixed-salt|-S <salt>` or the environment. Note that it should be at least 32 characters long and sufficiently random for Ansible's AES-256 encryption, and that you won't benefit from unique ciphers for identical plaintexts anymore.
 
 ### Diff logging
 
@@ -179,7 +179,7 @@ Compares two vaults or variable files and prints a tree structure showing differ
 
 #### file-daemon
 
-Starts a daemon which mirrors the decrypted contents of one or multiple vault or variable file(s)/directories to a target directory. By default, this includes the directories `./host_vars`, `./group_vars`, and `./vars`. Changes to the source files are reflected in the decrypted targets. Changes to the target files are ignored. For added security, consider syncing the files to a mounted ramdisk.
+Starts a daemon which mirrors the decrypted contents of one or multiple vault or variable files/directories to a target directory. By default, this includes the directories `./host_vars`, `./group_vars`, and `./vars`. Changes to the source files are reflected in the decrypted targets. Changes to the target files are ignored. For added security, consider syncing the files to a mounted ramdisk.
 
 #### get
 
