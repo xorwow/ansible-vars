@@ -4,8 +4,7 @@
 import os, re, json
 from io import StringIO
 from functools import reduce
-from typing import Type, Hashable, Callable, Any
-from types import MappingProxyType
+from typing import Type, Hashable, Callable, Any, cast
 from difflib import unified_diff
 
 # External library imports
@@ -26,6 +25,7 @@ class EncryptedVar():
     The content should be a str, as Ansible does not directly support other data types in encrypted variables.
     As this class has no `VaultKeyring` access, decryption must be performed externally.
     Note that comparing `EncryptedVar` objects by their `cipher`s usually does not work, as Ansible ciphers contain a random salt.
+    This class should be treated as static. Do not change its values, replace it instead.
     '''
 
     def __init__(self, cipher: str, name: str | None = None) -> None:
@@ -54,7 +54,10 @@ class EncryptedVar():
         return EncryptedVar(cipher, name=node.id)
 
 class ProtoEncryptedVar():
-    '''A variable marked to be encrypted in a `Vault` editable.'''
+    '''
+    A variable marked to be encrypted in a `Vault` editable.
+    This class should be treated as static. Do not change its values, replace it instead.
+    '''
 
     def __init__(self, plaintext: str, name: str) -> None:
         '''Initialize a plaintext value marked for encryption with a name for internal representation.'''
@@ -223,11 +226,11 @@ class Vault():
         try:
             value: Any = self._traverse(path, decrypt=decrypt, copy=copy)
             if with_index:
-                parent: Indexable = self._traverse(path[:-1], decrypt=False)
+                parent: Indexable = self._data if not path else self._traverse(path[:-1], decrypt=False)
                 if isinstance(parent, dict):
                     key_index: int = next(index for index, key in enumerate(parent) if key == path[-1])
                 else:
-                    key_index: int = path[-1] # type: ignore
+                    key_index = cast(int, path[-1])
                 return (key_index, value)
             return value
         except:
@@ -284,7 +287,7 @@ class Vault():
             if isinstance(parent, list) and type(segment) is not int:
                 raise TypeError(f"Type of list index has to be int, got { type(segment) } ({ par_path }[{ segment }])")
             # Check if the current segment has to be created in the parent
-            if (isinstance(parent, dict) and segment not in parent) or (isinstance(parent, list) and segment >= len(parent)): # type: ignore
+            if (isinstance(parent, dict) and segment not in parent) or (isinstance(parent, list) and cast(int, segment) >= len(parent)):
                 if not is_last:
                     if create_parents is ThrowError:
                         raise KeyError(f"Parents of { '.'.join(map(str, path)) } could not be resolved ({ segment } not in { par_path })")
@@ -470,7 +473,7 @@ class Vault():
             if not isinstance(parent, dict | list):
                 raise TypeError(f"Can only index into dict-like and list-like types, got { type(parent) } for index { index }")
             is_dict: bool = isinstance(parent, dict)
-            if (is_dict and index not in parent) or (not is_dict and index > len(parent)): # type: ignore
+            if (is_dict and index not in parent) or (not is_dict and cast(int, index) > len(parent)):
                 raise KeyError(f"Key '{ index }' of path '{ '.'.join(map(str, path)) }' could not be resolved")
             return parent[index] # type: ignore
         return reduce(_get_child, path, data)
@@ -538,12 +541,9 @@ class Vault():
         Runs the transform_fn on all leaves of the indexable object recursively, passing the current path and the leaf object as a tuple.
         The leaves are replaced by the result of the function call.
         '''
-        if isinstance(indexable, dict):
-            keys: list[Hashable] = list(indexable.keys())
-        else:
-            keys: list[Hashable] = list(range(len(indexable)))
+        keys: list[Hashable] = list(indexable.keys()) if isinstance(indexable, dict) else list(range(len(indexable)))
         for key in keys:
-            _curr_path = curr_path + ( key, ) # type: ignore
+            _curr_path: tuple[Hashable, ...] = curr_path + ( key, )
             if isinstance(indexable[key], dict | list): # type: ignore
                 Vault._transform_leaves(indexable[key], transform_fn, _curr_path) # type: ignore
             else:
@@ -576,8 +576,8 @@ class Vault():
         Not thread-safe.
         '''
         if (is_dict := isinstance(data, dict)) or isinstance(data, list):
-            copy = data.copy()
-            keys = copy.keys() if is_dict else range(len(copy)) # type: ignore
+            copy: Any = data.copy()
+            keys = cast(dict, copy).keys() if is_dict else range(len(copy))
             for key in keys:
                 copy[key] = Vault._copy_data(copy[key])
             return copy
@@ -654,11 +654,11 @@ class Vault():
                 _path: tuple[Hashable, ...] = path + ( key, )
                 # Check if a key has been added or removed
                 if (is_dict and key in old_node and key not in new_node) or \
-                   (not is_dict and key < len(old_node) and key >= len(new_node)): # type: ignore
+                   (not is_dict and cast(int, key) < len(old_node) and cast(int, key) >= len(new_node)):
                     removed_paths.append(_path)
                     continue
                 if (is_dict and key in new_node and key not in old_node) or \
-                   (not is_dict and key < len(new_node) and key >= len(old_node)): # type: ignore
+                   (not is_dict and cast(int, key) < len(new_node) and cast(int, key) >= len(old_node)):
                     added_paths.append(_path)
                     continue
                 # Traverse subtree of node
@@ -797,7 +797,7 @@ class VaultFile(Vault):
         if full_encryption and not keyring:
             raise NoVaultKeysError(f"No vault keys available to write encrypted content to { path }")
         with open(path, 'w') as file:
-            file.write(keyring.encrypt(content) if full_encryption else content) # type: ignore
+            file.write(cast(VaultKeyring, keyring).encrypt(content) if full_encryption else content)
         # Create VaultFile and write content to disk
         vaultfile = VaultFile(path, keyring=keyring)
         vaultfile.full_encryption = full_encryption
@@ -808,10 +808,10 @@ class VaultFile(Vault):
     def from_editable(VaultFile: Type['VaultFile'], prev_vault_file: 'VaultFile', edited_content: str) -> 'VaultFile':
         '''Converts a YAML vault edited from a `VaultFile.as_editable` template into a new `VaultFile`. Does not update the file on disk.'''
         # Create vault from editable, then wrap with our class and copy relevant attributes over
-        vault: Vault = Vault.from_editable(prev_vault_file, edited_content)
+        vault: VaultFile = cast(VaultFile, Vault.from_editable(prev_vault_file, edited_content))
         vault.__class__ = VaultFile
-        vault.vault_path = prev_vault_file.vault_path # type: ignore
-        return vault # type: ignore
+        vault.vault_path = prev_vault_file.vault_path
+        return vault
 
     def save(self) -> None:
         '''Saves the current `Vault` contents to the vault file attached to this `VaultFile`. '''
