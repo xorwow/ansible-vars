@@ -101,7 +101,7 @@ As you cannot mix different encryption keys and/or plain logging in the same log
 # Create the variable file `./host_vars/my_host/main.yml` without full encryption and open it for editing
 ansible-vars create --make-parents --plain host_vars/my_host/main.yml
 # Short version (see `Tips` section to learn about vault search paths)
-ansible-vars create -mp h:my_host
+ansible-vars create -mp h:my_host/
 
 # Decrypt the vault file `./config/logging.yml` in-place
 ansible-vars decrypt file config/logging.yml
@@ -124,6 +124,7 @@ ansible-vars get --json g:database_hosts 'my_key' '[4]' '133'
 - When a command supports a `--json` flag, the command's help (`ansible-vars <command> -h`) will define the returned structure.
 - The directories `host_vars`, `group_vars`, and `vars` are common vault locations. When in their parent directory, you can use the prefixes `h:`, `g:`, and `v:` in any vault path you specify, followed by a path relative to them. Wherever a directory is not expected as a path, supplying a directory path will also append a `main.yml` to the path automatically. In summary, this lets you type `h:my_host` when you actually mean `./host_vars/my_host/main.yml`. Shell completion for these prefixed paths is provided.
     - These three directories are also default sources for the `file-daemon` command.
+    - For vault creation with the `--make-parents` flag, a path like `h:my_host` would be ambiguous as to the expanded path being `./host_vars/my_host` or `./host_vars/my_host/main.yml`, since the directory does not exist yet. `ansible-vars` will assume the first case, unless you end your search path with a / like `h:my_host/`.
 - When referencing vault traversal keys, you can specify numbers to access lists and number-indexed dictionaries. However, just specifying `2` as a key segment will resolve into the string `'2'`. Instead, you should write `[2]` to mark it as a number index. If you need to specify the string `'[2]'` for some reason, you can escape it by adding another set of brackets (and so on).
 
 ### Commands

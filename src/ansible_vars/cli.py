@@ -72,8 +72,9 @@ tips:
 - When a command asks for a vault file path it actually accepts multiple kinds of search path:
   - You can specify a full or relative path to a vault file just as usual. This path will always be tried first.
   - If you specify `h:<path>`, `g:<path>`, or `v:<path>`, it looks in `./host_vars`, `./group_vars`, or `./vars`, respectively.
-  - If a resolved path is a directory instead of a file, it looks for a `main.yml` in that directory.
+  - If a resolved path is a directory instead of a file, it looks for or creates a `main.yml` in that directory.
   - For example, to open the file `/ansible/host_vars/my_host/main.yml`, you may run the command in `/ansible` and specify `h:my_host`.
+  - For vault creation with the `--make-parents` flag, `<path>` will create the file `<path>`, while `<path>/` will create `<path>/main.yml`.
 - Data keys are split into segments (e.g. `root['my_key'][0]` would become `'my_key', 0`) for easier parsing.
     - When specifying a key segment which is a number (e.g. a list index), surround it in brackets (`[2]`) to differentiate it from a string.
     - If you need to actually use the string `[2]`, add a set of brackets to escape it (`[[2]]` -> `'[2]'`, `[[[2]]]` -> `'[[2]]'`, ...).
@@ -548,7 +549,8 @@ def resolve_vault_path(search_path: str, create_mode: bool = False, allow_dirs: 
     - As an absolute path or a relative path from the PWD
     - As a relative path with prefix `h:` / `g:` / `v:` to be treated as a subpath into `./host_vars` / `./group_vars` / `./vars`
     - If the path is expected to be a file and the previous steps found a directory, append a `main.yml` to that path
-    If `create_mode` is set to True (i.e. the searched file doesn't exist yet), we test for option 2 first, then option 1 and option 3.
+    If `create_mode` is set to True (i.e. the searched file doesn't exist yet), we test for case 2 first, then cases 1 and 3.
+    Setting `create_mode` will also treat a path ending in a / as a folder to create a `main.yml` in.
     '''
     # Try the path as-is first
     abspath: str = os.path.abspath(search_path)
@@ -560,7 +562,7 @@ def resolve_vault_path(search_path: str, create_mode: bool = False, allow_dirs: 
             if len(search_path) > 2:
                 abspath = os.path.join(abspath, search_path[2:].lstrip(os.path.sep))
     # Check for main.yml in directory
-    if not allow_dirs and os.path.isdir(abspath):
+    if (not allow_dirs and os.path.isdir(abspath)) or (create_mode and search_path.endswith('/')):
         abspath = os.path.join(abspath, 'main.yml')
     # Debug output
     debug(f"Resolved path { search_path } to { abspath }")
@@ -649,6 +651,8 @@ if config.command in [ 'create', 'edit' ]:
     if config.command == 'create':
         if config.make_parents:
             os.makedirs(os.path.dirname(vault_path), mode=0o700, exist_ok=True)
+            if not vault_path.endswith('.yml'):
+                print(f"Treating path as a file, append a / to create a directory containing a main.yml instead", Color.MEH)
         vault = VaultFile.create(vault_path, full_encryption=config.encrypt_vault, permissions=0o600, keyring=keyring)
         print(f"Created { 'encrypted' if vault.full_encryption else 'plain' } vault at { vault_path }", Color.GOOD)
     else:
