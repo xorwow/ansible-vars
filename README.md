@@ -187,7 +187,7 @@ Displays the (optionally recursively decrypted) value of a specified key in a va
 
 #### set, del (experimental)
 
-Creates, updates, or deletes a key-value pair from a vault or variable file. When setting a value, you may provide a YAML string which will be parsed into the corresponding objects. Note that these are experimental features, as the current parser has difficulty preserving the metadata for programmatic variable changes. Comments and Jinja2 blocks between the affected key and the next key in the file may be lost.
+Creates, updates, or deletes a key-value pair from a vault or variable file. When setting a value, you may provide a YAML string which will be parsed into the corresponding objects. When the `--encrypt` flag is set, the object's leaf string values will be encrypted. Note that these are experimental features, as the current parser has difficulty preserving the metadata for programmatic variable changes. Comments and Jinja2 blocks between the affected key and the next key in the file may be lost.
 
 ### Environment variables
 

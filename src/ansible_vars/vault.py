@@ -256,19 +256,22 @@ class Vault():
           - `True`: Create any nested dictionaries needed to traverse to the last key
           - `False`: Abort silently if any but the last key in the path do not exist, returning False
           - `ThrowError`: Raise a KeyError if any but the last key in the path do not exist
-        - `encrypt`: Controls if the value should be encrypted before storing it (value has to be a str)
-          - `True`: Attempt to convert the value into an `EncryptedVar` before storing it
+        - `encrypt`: Controls if the value should be recursively encrypted before storing it (only plain `str`s get encrypted)
+          - `True`: Attempt to copy and convert the value('s leaf values) into an `EncryptedVar` before storing it
           - `False`: Store the value as-is
         '''
         path = Vault._to_path(path)
-        # Convert value to EncryptedVar if neccessary
-        if encrypt and type(value) is not EncryptedVar:
-            if type(value) is not str:
-                raise TypeError(f"Ansible only supports encrypted str values, got { type(value) } for { '.'.join(map(str, path)) }")
-            if VaultKey.is_encrypted(value):
-                value = EncryptedVar(value, name=str(path[-1]))
-            else:
-                value = EncryptedVar(self.keyring.encrypt(value), name=str(path[-1]))
+        # Encrypt value if necessary
+        if encrypt:
+            value = Vault._copy_data(value)
+            def _encrypt_leaf(_: tuple[Hashable, ...], _value: Any) -> Any:
+                '''Transforms strings into `EncryptedVar`s.'''
+                if type(_value) is not str:
+                    return _value
+                if VaultKey.is_encrypted(_value):
+                    return EncryptedVar(_value, name=str(path[-1]))
+                return EncryptedVar(self.keyring.encrypt(_value), name=str(path[-1]))
+            Vault._transform_leaves(value, _encrypt_leaf, tuple())
         # Resolve chain and create parents if necessary, then set value for last item
         parent: Any = self._data
         par_path: str = ''

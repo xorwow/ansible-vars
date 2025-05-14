@@ -190,7 +190,7 @@ JSON mode formatting:
 - [ ... ] or { ... } for lists/dictionaries, "<value>" for strings, <value> for numbers
 ''',
     'cmd_set': '''
-Creates or updates a node in a vault with a YAML value, optionally encrypting the value first using the configured encryption key.
+Creates or updates a node in a vault with a YAML value, optionally encrypting the value('s string leaves) first using the configured encryption key.
 For creating a new list entry, the last specified key segment has to equal the largest index of the list plus one (e.g. `[5]` for a list of length 5).
 The value is interpreted as YAML code.
 
@@ -430,7 +430,7 @@ cmd_set.add_argument('vault_path', type=str, metavar='<vault path>', help='path 
     .completer = _prefixed_path_completer # type: ignore
 cmd_set.add_argument('value', type=str, metavar='<value>', help='value to set (will be loaded as YAML)')
 cmd_set.add_argument('key_segments', type=str, nargs='+', metavar='<key segment> [<key segment> ...]', help='segment(s) of the key to look up (`[<num>]` for numbers)')
-cmd_set.add_argument('--encrypt', '-e', action='store_true', dest='encrypt_value', help='encrypt the value if it is\'t encrypted yet')
+cmd_set.add_argument('--encrypt', '-e', action='store_true', dest='encrypt_value', help='recursively encrypt the value(\'s leaves) if it is\'t encrypted yet')
 
 cmd_del = commands.add_parser(
     'del', help='delete a key and its value if they exist (experimental!)', description=HELP['cmd_del'],
@@ -1172,6 +1172,8 @@ if config.command in [ 'get', 'set', 'del' ]:
             # Set command
             if config.command == 'set':
                 value: Any = yaml.safe_load(config.value)
+                if type(value) is not str and config.encrypt_value:
+                    print('Only plain string leaves will be encrypted, not the entire object.', Color.MEH)
                 vault.set(key, value, overwrite=True, create_parents=True, encrypt=config.encrypt_value)
                 vault.save()
                 print('Value has been set.\n', Color.GOOD)
