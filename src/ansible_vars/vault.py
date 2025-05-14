@@ -198,21 +198,9 @@ class Vault():
     DictPath = Hashable | tuple[Hashable, ...]
 
     @property
-    def decrypted_vars(self) -> MappingProxyType:
-        '''
-        A read-only dictionary of the vault's variables, with any EncryptedVars already decrypted.
-        Note that the state is frozen whenever you access this property, and not updated when the vault changes.
-        '''
-        copy: dict = Vault._copy_data(self._data)
-        copy.pop(SENTINEL_KEY, None)
-        def _traverse_and_decrypt(root: Any) -> Any:
-            if isinstance(root, dict):
-                return { k: _traverse_and_decrypt(v) for k, v in root.items() }
-            elif isinstance(root, list):
-                return [ _traverse_and_decrypt(v) for v in root ]
-            else:
-                return self.keyring.decrypt(root.cipher) if type(root) is EncryptedVar else root
-        return MappingProxyType(_traverse_and_decrypt(copy))
+    def decrypted_vars(self) -> dict:
+        '''A copy of the vault's variables, with any EncryptedVars already decrypted.'''
+        return self._decrypted_copy(remove_sentinel=True) # might not have correct YAML metadata, but the values are okay
 
     def has(self, path: DictPath) -> bool:
         '''Checks if the given key path is present in the vault's data.'''
@@ -222,17 +210,18 @@ class Vault():
 
     def get(
             self, path: DictPath, default: Any | Type[ThrowError] = ThrowError,
-            decrypt: bool = False, with_index: bool = False
+            decrypt: bool = False, with_index: bool = False, copy: bool = False
         ) -> Any | tuple[int, Any]:
         '''
-        Retrieves a value from the vault's variables by its key path, optionally decrypting it (but not its children).
+        Retrieves a value from the vault's variables by its key path, optionally decrypting it recursively.
         When `default` is set to `ThrowError`, a `KeyError` will be raised if the path does not exist.
         Else, the default value is returned if the path does not exist.
-        When `with_index` is set to True, a tuple `(index_in_parent, value)` is returned (-1 if defaulted).
+        When `with_index` is set to True, a tuple `(index_in_parent, value)` is returned (index is -1 if defaulted).
+        When `copy` or `decrypt` is set to True, a deep copy of the value will be returned.
         '''
         path = Vault._to_path(path)
         try:
-            value: Any = self._traverse(path, decrypt=decrypt)
+            value: Any = self._traverse(path, decrypt=decrypt, copy=copy)
             if with_index:
                 parent: Indexable = self._traverse(path[:-1], decrypt=False)
                 if isinstance(parent, dict):
@@ -467,9 +456,13 @@ class Vault():
             new_parent.ca.items[new_path[-1]] = old_parent.ca.items.pop(old_path[-1])
     """
 
-    def _traverse(self, path: DictPath, decrypt: bool = False) -> Any:
-        '''Gets the value of the specified key path from the `Vault`'s `_data`, optionally decrypting it.'''
-        path = Vault._to_path(path)
+    def _traverse(self, path: DictPath, decrypt: bool = False, copy: bool = False) -> Any:
+        '''
+        Gets the value of the specified key path from the `Vault`'s `_data`, optionally decrypting it.
+        When `copy` or `decrypt` is set to True, a deep copy of the value will be returned.
+        '''
+        path = cast(tuple[Hashable, ...], Vault._to_path(path))
+        data: dict = self._decrypted_copy() if decrypt else (Vault._copy_data(self._data) if copy else self._data)
         def _get_child(parent: Indexable, index: Hashable) -> Any:
             if not isinstance(parent, dict | list):
                 raise TypeError(f"Can only index into dict-like and list-like types, got { type(parent) } for index { index }")
@@ -477,8 +470,18 @@ class Vault():
             if (is_dict and index not in parent) or (not is_dict and index > len(parent)): # type: ignore
                 raise KeyError(f"Key '{ index }' of path '{ '.'.join(map(str, path)) }' could not be resolved")
             return parent[index] # type: ignore
-        leaf: Any = reduce(_get_child, path, self._data)
-        return self.keyring.decrypt(leaf.cipher) if (decrypt and type(leaf) is EncryptedVar) else leaf
+        return reduce(_get_child, path, data)
+
+    def _decrypted_copy(self, remove_sentinel: bool = False) -> dict:
+        '''Returns a recursively decrypted deep copy of the vault data. Removing the sentinel may break comments/Jinja2.'''
+        copy: CommentedMap = Vault._copy_data(self._data)
+        if remove_sentinel:
+            copy.pop(SENTINEL_KEY, None)
+        def _decrypt_leaf(_: tuple[Hashable, ...], value: Any) -> Any:
+            '''Transforms EncryptedVar leaves into decrypted strings.'''
+            return self.keyring.decrypt(value.cipher) if type(value) is EncryptedVar else value
+        Vault._transform_leaves(copy, _decrypt_leaf, tuple())
+        return copy
 
     @staticmethod
     def _to_path(path: DictPath) -> tuple[Hashable, ...]:
@@ -493,12 +496,7 @@ class Vault():
 
     def as_plain(self) -> str:
         '''Returns the vault in fully decrypted form as Jinja2 YAML code with the original metadata.'''
-        copy: CommentedMap = Vault._copy_data(self._data)
-        #copy.pop(SENTINEL_KEY, None) # <-- would break a file containing only metadata and the sentinel key
-        def _decrypt_leaf(_: tuple[Hashable, ...], value: Any) -> Any:
-            '''Transforms EncryptedVar leaves into decrypted strings.'''
-            return self.keyring.decrypt(value.cipher) if type(value) is EncryptedVar else value
-        Vault._transform_leaves(copy, _decrypt_leaf, tuple())
+        copy: dict = self._decrypted_copy()
         yaml_content: str = self._dump_to_str(copy)
         yaml_content = Vault._remove_sentinel(yaml_content)
         return yaml_content

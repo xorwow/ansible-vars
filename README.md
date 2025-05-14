@@ -183,7 +183,7 @@ Starts a daemon which mirrors the decrypted contents of one or multiple vault or
 
 #### get
 
-Displays the (decrypted) value of a specified key in a vault or variable file. Supports dictionary and list traversal, and JSON output.
+Displays the (optionally recursively decrypted) value of a specified key in a vault or variable file. Supports dictionary and list traversal, and JSON output.
 
 #### set, del (experimental)
 

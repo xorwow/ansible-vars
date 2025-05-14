@@ -183,7 +183,7 @@ The sync works as long as the command is running, after which the target root di
 ''',
     'cmd_get': '''
 Looks up the value of a key in a vault and displays it if it exists.
-If the key resolves to a leaf value, the value is decrypted and displayed.
+If the key resolves to a leaf value, the value is recursively decrypted and displayed.
 For a list or dictionary, the full YAML code is printed, but child values are not automatically decrypted.
 
 JSON mode formatting:
@@ -411,7 +411,7 @@ cmd_daemon.add_argument('--no-default-dirs', '-N', action='store_false', dest='i
 cmd_daemon.add_argument('--force', '-f', action='store_true', help='if the target root already exists and is not empty, delete its contents')
 
 cmd_get = commands.add_parser(
-    'get', help='get a key\'s (decrypted) value if it exists', description=HELP['cmd_get'],
+    'get', help='get a key\'s (recursively decrypted) value if it exists', description=HELP['cmd_get'],
     formatter_class=RawDescriptionHelpFormatter
 )
 cmd_get.add_argument('vault_path', type=str, metavar='<vault path>', help='path of vault to get value from') \
