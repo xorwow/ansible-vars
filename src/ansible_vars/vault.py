@@ -263,7 +263,7 @@ class Vault():
           - `True`: Attempt to copy and convert the value('s leaf values) into an `EncryptedVar` before storing it
           - `False`: Store the value as-is
         '''
-        path = Vault._to_path(path)
+        path: tuple[Hashable, ...] = Vault._to_path(path)
         # Encrypt value if necessary
         if encrypt:
             value = Vault._copy_data(value)
@@ -271,10 +271,14 @@ class Vault():
                 '''Transforms strings into `EncryptedVar`s.'''
                 if type(_value) is not str:
                     return _value
+                name: str | None = str(path[-1]) if path else None
                 if VaultKey.is_encrypted(_value):
-                    return EncryptedVar(_value, name=str(path[-1]))
-                return EncryptedVar(self.keyring.encrypt(_value), name=str(path[-1]))
-            Vault._transform_leaves(value, _encrypt_leaf, tuple()) if isinstance(value, dict | list) else _encrypt_leaf(tuple(), value)
+                    return EncryptedVar(_value, name=name)
+                return EncryptedVar(self.keyring.encrypt(_value), name=name)
+            if isinstance(value, dict | list):
+                Vault._transform_leaves(value, _encrypt_leaf, tuple())
+            else:
+                value = _encrypt_leaf(tuple(), value)
         # Resolve chain and create parents if necessary, then set value for last item
         parent: Any = self._data
         par_path: str = ''
