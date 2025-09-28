@@ -1,13 +1,14 @@
 # Vault secret loading and management for ansible-vars
 
 # Standard library imports
-import re
-from typing import Type
+import os, re
+from typing import Type, cast
 
 # External library imports
 import ansible.constants as Ansible
 from ansible.parsing.vault import VaultLib, VaultSecret, AnsibleVaultError
 from ansible.cli import DataLoader, CLI
+from ansible.config.manager import ConfigManager
 
 # Internal module imports
 from .errors import NoMatchingVaultKeyError, NoVaultKeysError, VaultKeyMatchError
@@ -89,7 +90,7 @@ class VaultKey():
 class VaultKeyring():
     '''
     A collection of Ansible vault secrets to be used for en- and decrypting vault data.
-    Tries to infer available secrets from the caller's present working directory, if it is an Ansible home.
+    Tries to infer available secrets from the caller's present working directory or a custom source.
     '''
 
     def __init__(
@@ -97,12 +98,14 @@ class VaultKeyring():
             keys: list[VaultKey] | None = None,
             default_encryption_key: VaultKey | None = None,
             default_salt: str | None = None,
-            detect_available_keys: bool = True
+            detect_available_keys: bool = True,
+            detection_source: str | list[str] | None = None
         ) -> None:
         '''
         Create a new keyring of `VaultKey`s and optionally populate it with the given `keys`.
-        Tries to infer available Ansible vault secrets from the caller's present working directory, if it is an Ansible home.
+        Tries to infer available Ansible vault secrets from the caller's present working directory or a custom `detection_source`.
         This is done using the Ansible CLI module. You can disable key inferral by setting `detect_available_keys` to False.
+        Check the docstring of `VaultKeyring.load_cli_secrets` for details on alternative key detection sources.
         When decrypting vault data, inferred keys are tried after the explicitly supplied ones.
         Note that the inferral process may cause TTY prompts or other unwanted in- and output.
         
@@ -116,7 +119,7 @@ class VaultKeyring():
         self.default_encryption_key: VaultKey | None = default_encryption_key
         self.default_salt: str | None = default_salt
         if detect_available_keys:
-            self.keys.extend(VaultKeyring.load_cli_secrets())
+            self.keys.extend(VaultKeyring.load_cli_secrets(detection_source))
     
     @property
     def encryption_key(self) -> VaultKey:
@@ -169,17 +172,46 @@ class VaultKeyring():
         raise NoMatchingVaultKeyError(f"No matching key found for ID '{ id }' in { self }")
 
     @staticmethod
-    def load_cli_secrets() -> list[VaultKey]:
+    def load_cli_secrets(source: str | list[str] | None = None) -> list[VaultKey]:
         '''
-        Tries to infer available Ansible vault secrets from the caller's present working directory, if it is an Ansible home.
+        Tries to infer available Ansible vault secrets from the given configuration source's `vault_identity_list`.
+        - If `source` is None, check the environment and CWD for a configuration file path and check the file.
+        - If `source` is a file, check the file.
+        - If `source` is a directory, check `<source>/ansible.cfg`.
+        - If `source` is a list, it is used directly as the `vault_identity_list`.
+
+        Due to limitations in the Ansible interface, setting the environment variable `ANSIBLE_VAULT_IDENTITY_LIST`
+        will always override the result of the `source` check, except if `source` is a list of vault IDs.
+
         Inferred secrets are converted into `VaultKey`s and returned.
         Note that the inferral process may cause TTY prompts or other unwanted in- and output.
+        Not entirely thread-safe, as setting a specific `source` path will temporarily change the global CWD.
         '''
-        # Ansible.DEFAULT_VAULT_IDENTITY_LIST is a list populated with vault IDs inferred from the PWD
-        # (i.e. has to be run in ANSIBLE_HOME, else the value is [])
-        secrets: list[tuple[str | None, VaultSecret]] = \
-            CLI.setup_vault_secrets(DataLoader(), Ansible.DEFAULT_VAULT_IDENTITY_LIST, auto_prompt=False) # type: ignore
-        return list(map(VaultKey.from_ansible_secret, secrets))
+        pardir: str = os.getcwd()
+        # Set or discover available vault IDs
+        if isinstance(source, list | tuple):
+            vault_ids: list[str] = source
+        else:
+            if source:
+                if not os.path.exists(source):
+                    raise FileNotFoundError(f"Vault key detection path `{ source }` could not be resolved.")
+                if os.path.isdir(source):
+                    source = os.path.join(source, 'ansible.cfg')
+                pardir: str = os.path.dirname(cast(str, source))
+            vault_ids: list[str] = ConfigManager(conf_file=source).get_config_value('DEFAULT_VAULT_IDENTITY_LIST')
+        # Load secrets for discovered vault IDs
+        if not vault_ids:
+            return []
+        prev_dir: str = os.getcwd()
+        try:
+            # XXX Hacky, but loading a vault ID like 'vaultid@get-password.sh' will be resolved from CWD
+            #     Could possibly be avoided by splitting the detected vault IDs and transforming any right-hand paths
+            os.chdir(pardir)
+            secrets: list[tuple[str | None, VaultSecret]] = \
+                CLI.setup_vault_secrets(DataLoader(), vault_ids, auto_prompt=False) # type: ignore
+            return list(map(VaultKey.from_ansible_secret, secrets))
+        finally:
+            os.chdir(prev_dir)
 
     def __repr__(self) -> str:
         return f"VaultKeyring({ ', '.join(map(lambda key: key.id, self.keys)) or 'no keys' })"

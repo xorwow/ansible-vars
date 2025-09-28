@@ -29,11 +29,6 @@ from pygments.lexers.templates import YamlJinjaLexer
 from pygments.formatter import Formatter
 from pygments.formatters import TerminalFormatter, Terminal256Formatter, TerminalTrueColorFormatter
 
-# If we need to change the working directory, we have to do it before loading the Ansible vault library
-# Else, keys will not be detected correctly
-ANSIBLE_HOME: str = os.environ.get('ANSIBLE_HOME', os.getcwd())
-os.chdir(ANSIBLE_HOME)
-
 # Internal module imports
 from .vault import VaultFile, EncryptedVar, ProtoEncryptedVar
 from .vault_crypt import VaultKey, VaultKeyring
@@ -203,11 +198,18 @@ Deletes a node from a vault if it exists.
 '''
 }
 
-DEFAULT_EDITOR: str = os.environ.get('EDITOR', 'notepad.exe' if os.name == 'nt' else 'vi')
-DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', '256' if sys.stdout.isatty() else 'none')
-DEFAULT_TEMP_DIR: str = os.environ.get('AV_TEMP_DIR', gettempdir())
-DEFAULT_CREATE_PLAIN: bool = os.environ.get('AV_CREATE_PLAIN', 'no').lower() in [ 'yes', 'y', 'true', 't', '1' ]
-DEFAULT_SALT: str | None = os.environ.get('AV_SALT', None)
+# Not using defaults directly because we also want to ignore empty values
+DEFAULT_EDITOR: str = os.environ.get('EDITOR', None) or ('notepad.exe' if os.name == 'nt' else 'vi')
+DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', None) or ('256' if sys.stdout.isatty() else 'none')
+DEFAULT_TEMP_DIR: str = os.environ.get('AV_TEMP_DIR', None) or gettempdir()
+DEFAULT_CREATE_PLAIN: bool = (os.environ.get('AV_CREATE_PLAIN', None) or 'no').lower() in [ 'yes', 'y', 'true', 't', '1' ]
+DEFAULT_SALT: str | None = os.environ.get('AV_SALT', None) or None
+DEFAULT_SECRETS_ROOT: str | None = os.environ.get('AV_SECRETS_ROOT', None) or os.environ.get('ANSIBLE_HOME', None) or None
+DEFAULT_RESOLVER_ROOT: str | None = os.environ.get('AV_RESOLVER_ROOT', None) or None
+
+# Resolve all paths as if the caller is in the resolver root
+if DEFAULT_RESOLVER_ROOT:
+    os.chdir(DEFAULT_RESOLVER_ROOT)
 
 args: ArgumentParser = ArgumentParser(
     prog = 'ansible-vars',
@@ -251,7 +253,12 @@ key_args = args.add_argument_group('vault key management', description=HELP['key
 key_args.add_argument(
     '--add-key', '-k', type=str, nargs=2, action='append', dest='keys', default=[], metavar=('<identifier>', '<passphrase>'), help='add a vault key'
 )
-key_args.add_argument('--no-detect-keys', '-D', action='store_false', dest='detect_keys', help='disable automatic key detection')
+key_mutex = key_args.add_mutually_exclusive_group()
+key_mutex.add_argument('--no-detect-keys', '-D', action='store_false', dest='detect_keys', help='disable automatic key detection')
+key_mutex.add_argument(
+    '--detection-source', type=str, metavar='<secrets root>', default=DEFAULT_SECRETS_ROOT,
+    help=f"use this directory or config file to detect keys (default: { DEFAULT_SECRETS_ROOT or 'CWD' })"
+)
 key_args.add_argument('--encryption-key', '-K', type=str, metavar='<identifier>', help='which of the loaded keys to use for encryption')
 key_args.add_argument(
     '--fixed-salt', '-S', type=str, metavar='<salt>', default=DEFAULT_SALT,
@@ -587,7 +594,10 @@ sys.excepthook = _exc_hook
 # Load vault keys
 
 _explicit_keys: list[VaultKey] = [ VaultKey(passphrase, vault_id=id) for id, passphrase in config.keys ]
-keyring = VaultKeyring(_explicit_keys.copy(), detect_available_keys=config.detect_keys, default_salt=config.fixed_salt)
+keyring: VaultKeyring = VaultKeyring(
+    _explicit_keys.copy(), default_salt=config.fixed_salt,
+    detect_available_keys=config.detect_keys, detection_source=config.detection_source
+)
 
 if config.encryption_key:
     keyring.default_encryption_key = keyring.key_by_id(config.encryption_key)

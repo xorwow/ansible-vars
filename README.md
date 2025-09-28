@@ -89,11 +89,13 @@ Encrypted variables will be displayed using this tag when editing, making it eas
 
 **TL;DR:** Run `ansible-vars` from your Ansible home to auto-detect configured secrets. Add a custom secret using `-k <identifier> <passphrase>`.
 
-To use any functions of `ansible-vars` that require encrypting or decrypting data, you need to provide one or multiple vault secret(s). If you're in an Ansible home directory when running the command, it tries to auto-detect configured vault secrets by calling the Ansible CLI API. You can also specify your own secrets as pairs of identifier and passphrase using `--add-key|-k <identifier> <passphrase>`. The identifier can be anything you want, although it should ideally be unique. Consider using an environment variable or in-line command to retrieve the passphrase from a secure location.
+To use any functions of `ansible-vars` that require encrypting or decrypting data, you need to provide one or multiple vault secret(s). If you're in an Ansible home directory when running the command, it tries to auto-detect configured vault secrets by calling the Ansible CLI API, which looks for a `vault_identity_list` in the Ansible configuration. You can also specify your own secrets as pairs of identifier and passphrase using `--add-key|-k <identifier> <passphrase>`. The identifier can be anything you want, although it should ideally be unique. Consider using an environment variable or in-line command to retrieve the passphrase from a secure location.
 
 By default, the first loaded key is used for all encryption tasks. Note that auto-detected keys are inserted into the application's keyring *after* your explicitly added ones, so the first key you add will usually be the encryption key. If you want to make sure a certain key is used, reference its identifier using `--encryption-key|-K <identifier>`.
 
 You can disable automatic key detection by flagging `--no-detect-keys|-D`. Use `ansible-vars keyring` to view all available keys.
+
+You can customize the configuration file used for key detection via `--detection-source` or the environment. When a configuration file path is given, the file will be searched for a `vault_identity_list` and the corresponding secrets get loaded. When a directory path is given, `ansible-vars` will look for an `ansible.cfg` in that directory and perform the same loading procedure on that file. When left unset, Ansible checks if a configuration file path is set via its standard environment variable, and otherwise uses the current working directory for auto-detection. Note that setting Ansible's `DEFAULT_VAULT_IDENTITY_LIST` environment variable will override this behavior.
 
 #### Encryption salts
 
@@ -203,9 +205,15 @@ Creates, updates, or deletes a key-value pair from a vault or variable file. Whe
 
 ### Environment variables
 
-#### ANSIBLE_HOME
+#### AV_SECRETS_ROOT (or ANSIBLE_HOME)
 
-If this variable is set, the program will use its value as the working directory. When running the script from somewhere else, this way keys will be detected and paths will be resolved as if you were in your Ansible root directory.
+If this variable is set to a file or directory path, the program will use its value to auto-detect configured vault secrets if detection is not disabled via `--no-detect-keys|-D`. When a configuration file path is given, the file will be searched for a `vault_identity_list` and the corresponding secrets get loaded. When a directory path is given, `ansible-vars` will look for an `ansible.cfg` in that directory and perform the same loading procedure on that file. Note that setting Ansible's `DEFAULT_VAULT_IDENTITY_LIST` environment variable will skip this step entirely.
+
+When running the script from somewhere else, this way vault secrets will be resolved as if you were in this directory or using this configuration file. When left unset, Ansible checks if a configuration file path is set via its standard environment variable, and otherwise uses the current working directory for auto-detection. It is equivalent to setting the `--detection-source` flag.
+
+#### AV_RESOLVER_ROOT
+
+If this variable is set, the program will use its value as the working directory. When running the script from somewhere else, this way paths will be resolved as if you were in this directory.
 
 #### AV_COLOR_MODE
 
