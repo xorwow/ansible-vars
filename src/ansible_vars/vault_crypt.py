@@ -208,7 +208,7 @@ class VaultKeyring():
             #     Could possibly be avoided by splitting the detected vault IDs and transforming any right-hand paths
             os.chdir(pardir)
             secrets: list[tuple[str | None, VaultSecret]] = \
-                CLI.setup_vault_secrets(DataLoader(), vault_ids, auto_prompt=False) # type: ignore
+                CLI.setup_vault_secrets(DataLoader(), vault_ids, auto_prompt=False, initialize_context=False) # type: ignore
             return list(map(VaultKey.from_ansible_secret, secrets))
         finally:
             os.chdir(prev_dir)
