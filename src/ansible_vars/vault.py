@@ -239,7 +239,7 @@ class Vault():
             return (-1, default) if with_index else default
 
     def set(
-            self, path: DictPath, value: Any, overwrite: bool | Type[ThrowError] = True,
+            self, path: DictPath, value: Any, overwrite: bool | Type[ThrowError] = True, # type: ignore
             create_parents: bool | Type[ThrowError] = True, encrypt: bool = False
         ) -> bool:
         '''
@@ -263,7 +263,7 @@ class Vault():
           - `True`: Attempt to copy and convert the value('s leaf values) into an `EncryptedVar` before storing it
           - `False`: Store the value as-is
         '''
-        path: tuple[Hashable, ...] = Vault._to_path(path)
+        path: tuple[Hashable, ...] = Vault._to_path(path) # XXX typer complains if not explicitly re-typed
         # Encrypt value if necessary
         if encrypt:
             value = Vault._copy_data(value)
