@@ -2,11 +2,15 @@
 
 *Manage vaults and variable files for Ansible.*
 
+## TL;DR
+
+Replaces the `ansible-vault` command with `ansible-vars`, which supports encrypting individual variables, not just entire files. Also provides a CLI and Python interface for querying and modifying Ansible variable files and vaults.
+
 ## Introduction
 
 This project was motivated by a need to have Ansible vaults readable to humans and external programs like `grep` without a manual decryption step, while keeping secret values in these vaults secure from prying eyes. Ansible actually supports keeping vaults plain-text and only encrypting individual string variables, but this feature is not widely known or used and editing such files is not supported by the `ansible-vault` tool.
 
-`ansible-vars` allows you to do the same things `ansible-vault` does (and more!), but not just for fully encrypted vaults, but also plain variable files and vaults with hybrid encryption (encrypted variables and/or full encryption). This is significantly more complex, as `ansible-vault` can be agnostic to the contents of the file it en-/decrypts, while hybrid encryption requires full round-trip parsing of a vault's Jinja2 YAML code.
+`ansible-vars` allows you to do the same things `ansible-vault` does (and more!), but not just for fully encrypted vaults, but also plain variable files and vaults with hybrid encryption (individually (un)encrypted variables). This is significantly more complex, as `ansible-vault` can be agnostic to the contents of the file it en-/decrypts, while hybrid encryption requires full round-trip parsing of a vault's Jinja2 YAML code.
 
 The main features are:
 - Create and edit vaults and variable files with hybrid encryption support.
@@ -41,8 +45,8 @@ Note that the virtual environment must be active when using the command.
 ### Using [pipx](https://github.com/pypa/pipx)
 
 ```sh
-# Install pipx
-pip install pipx
+# Install pipx, e.g. like this on Debian
+sudo apt install pipx
 # Install pip package globally using pipx
 pipx install ansible-vars
 ```
@@ -71,7 +75,15 @@ When editing a vault or variable file using `ansible-vars`, you can prefix any s
 my_message: !enc this is a super secret message
 ```
 
-Encrypted variables will be displayed using this tag when editing, making it easy to view, modify, or decrypt their value.
+The variable will turn into an Ansible encryption string when saving the file:
+
+```yaml
+my_message: !vault |-
+  $ANSIBLE_VAULT;1.2;AES256;someid
+  333533...
+```
+
+Encrypted variables will be displayed using this tag when editing, making it easy to view, modify, or decrypt their value on the fly.
 
 ### Vault secrets
 
@@ -85,7 +97,7 @@ You can disable automatic key detection by flagging `--no-detect-keys|-D`. Use `
 
 #### Encryption salts
 
-Each time you edit a vault or otherwise encrypt a value, a randomly generated salt is used so even identical plain values will result in unique ciphers. However, this also means that each time a single encrypted variable is edited, all other ciphers in the vault will change as well. You can avoid this by passing a fixed salt via `--fixed-salt|-S <salt>` or the environment. Note that it should be at least 32 characters long and sufficiently random for Ansible's AES-256 encryption, and that you won't benefit from unique ciphers for identical plaintexts anymore.
+Each time you edit a vault or otherwise encrypt a value, a randomly generated salt is used to avoid identical plain values resulting in identical ciphers. One side-effect of this is that each time a single encrypted variable is edited, all other ciphers in the vault will change as well, possibly making changelogs (e.g. from git) less useful. You can avoid this by passing a fixed salt via `--fixed-salt|-S <salt>` or the environment. Note that it should be at least 32 characters long and sufficiently random for Ansible's AES-256 encryption, and that you won't benefit from unique ciphers for identical plaintexts anymore.
 
 ### Diff logging
 
