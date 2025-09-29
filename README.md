@@ -247,7 +247,7 @@ Contains the classes `Vault` and `VaultFile`. A `Vault` is initialized using the
 
 The `VaultKey` class represents a single vault secret, comprised of an identifier and an `ansible.parsing.vault.VaultSecret`. Can be initialized using a plain passphrase instead of a `VaultSecret` as well.
 
-The `VaultKeyring` combines a collection of `VaultKey`s. It supports auto-detection of any secrets available in the present working directory using the `ansible.cli` module, appending them to the `<keyring>.keys` collection. While all keys are tried in order for decryption operations, only one key can be used for encrypting data. This key is usually the first key in the `<keyring>.keys` collection, unless explicitly specified otherwise using `<keyring>.default_encryption_key` or passing a key to the `<keyring>.encrypt()` method.
+The `VaultKeyring` combines a collection of `VaultKey`s. It supports auto-detection of any secrets available in the present working directory (or a custom source) using the `ansible.cli` module, appending them to the `<keyring>.keys` collection. While all keys are tried in order for decryption operations, only one key can be used for encrypting data. This key is usually the first key in the `<keyring>.keys` collection, unless explicitly specified otherwise using `<keyring>.default_encryption_key` or passing a key to the `<keyring>.encrypt()` method.
 
 #### util module
 
