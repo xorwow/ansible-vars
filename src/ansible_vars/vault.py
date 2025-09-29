@@ -30,7 +30,7 @@ class EncryptedVar():
 
     def __init__(self, cipher: str, name: str | None = None) -> None:
         '''Initialize an encrypted variable with an optional variable name. The name is only used for internal representation.'''
-        # Encrypted has to hold a string like '$ANSIBLE_VAULT;1.2;AES256;ramiio\n123456<...>' (the newline is important)
+        # Encrypted has to hold a string like '$ANSIBLE_VAULT;1.2;AES256;someid\n123456<...>' (the newline is important)
         self.cipher: str = cipher
         self.name: str | None = name
 
