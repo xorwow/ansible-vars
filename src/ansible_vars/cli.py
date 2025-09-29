@@ -178,8 +178,7 @@ The sync works as long as the command is running, after which the target root di
 ''',
     'cmd_get': '''
 Looks up the value of a key in a vault and displays it if it exists.
-If the key resolves to a leaf value, the value is recursively decrypted and displayed.
-For a list or dictionary, the full YAML code is printed, but child values are not automatically decrypted.
+The value will be shown in (recursively) decrypted form.
 
 JSON mode formatting:
 - [ ... ] or { ... } for lists/dictionaries, "<value>" for strings, <value> for numbers
