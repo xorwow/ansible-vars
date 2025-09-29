@@ -107,7 +107,7 @@ class Vault():
         Parses a vault's (potentially encrypted) contents. Automatically detects if the content is wholly encrypted.
         If no keyring is supplied, only plain vars and content are supported.
         '''
-        # If no keyring is supplied, create an empty one which will raise an Error if we try to en-/decrypt anything
+        # If no keyring is supplied, create an empty one which will raise an error if we try to en-/decrypt anything
         self.keyring: VaultKeyring = keyring or VaultKeyring(keys=None, detect_available_keys=False)
         # Full vault encryption, may also contain single encrypted variables either way
         self.full_encryption: bool
