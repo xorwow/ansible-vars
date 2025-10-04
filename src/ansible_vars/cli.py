@@ -505,9 +505,12 @@ def print_yaml(code: str) -> None:
         return std_print(code)
     std_print(highlight(code, yaml_highlight_lexer, highlight_formatter).strip('\n'))
 
-def print_diff(diff: str) -> None:
+def print_diff(diff: str | None) -> None:
     '''Print a diff with highlighting if a `color_mode` is available.'''
     _color_map: dict = { '-': Color.TREE_REMOVED, '+': Color.TREE_ADDED, '@': Color.INFO, '*': Color.TREE_UNCHANGED }
+    if not diff:
+        print('Vaults are identical.', Color.TREE_UNCHANGED)
+        return
     for line in diff.split('\n'):
         color: Color = _color_map[line[0]] if (len(line) > 0 and line[0] in [ '-', '+', '@' ]) else _color_map['*']
         print(line, color)
