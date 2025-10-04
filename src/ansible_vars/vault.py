@@ -591,12 +591,13 @@ class Vault():
 
     # Comparing to older versions of this vault
 
-    def diff(self, prev_vault: 'Vault', context_lines: int = 3, show_filenames: bool = True) -> str:
+    def diff(self, prev_vault: 'Vault', context_lines: int = 3, show_filenames: bool = True) -> str | None:
         '''
         Generates a diff for the edit mode Jinja2 YAML vault code (from `Vault.as_editable`) of a previous vault to this one's.
         Set `context_lines` to specify how many lines of context are shown before and after the actual diff lines.
         If `show_filenames` is set to True and the vaults are `VaultFile` objects,
         the previous and current filenames will be shown in the diff header.
+        If there is no difference between the vaults, None is returned.
         '''
         # Generate filenames
         prev_filename: str = 'Previous vault'
@@ -615,7 +616,7 @@ class Vault():
                 n = context_lines,
                 lineterm = ''
             )
-        )
+        ) or None # diff function returns empty list if there are no changes, even skipping the header
     
     def changes(self, prev_vault: 'Vault') -> tuple[ChangeList, ChangeList, ChangeList, ChangeList]:
         '''
