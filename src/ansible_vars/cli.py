@@ -707,7 +707,7 @@ if config.command in [ 'create', 'edit' ]:
                 new_editable: str = edit_file.read()
                 if editable != new_editable:
                     try:
-                        new_vault: VaultFile = VaultFile.from_editable(vault, new_editable)
+                        new_vault = VaultFile.from_editable(vault, new_editable)
                     except YAMLFormatError as e:
                         print('Invalid YAML format:', Color.BAD)
                         print(e.parent if e.parent else e, Color.BAD)
