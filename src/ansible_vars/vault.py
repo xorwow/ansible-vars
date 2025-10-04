@@ -208,7 +208,7 @@ class Vault():
     def has(self, path: DictPath) -> bool:
         '''Checks if the given key path is present in the vault's data.'''
         try: self._traverse(path, decrypt=False)
-        except KeyError: return False
+        except ( KeyError, IndexError ): return False
         return True
 
     def get(
