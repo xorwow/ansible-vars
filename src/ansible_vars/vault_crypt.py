@@ -206,8 +206,13 @@ class VaultKeyring():
         # XXX Hacky, but the right-hand path from loading a vault ID like 'vaultid@get-password.sh' will be resolved from CWD
         #     Could possibly be avoided by splitting the detected vault IDs and transforming any right-hand paths
         with chdir(pardir):
-            secrets: list[tuple[str | None, VaultSecret]] = \
-                CLI.setup_vault_secrets(DataLoader(), vault_ids, auto_prompt=False, initialize_context=False) # type: ignore
+            # Seems version-dependent if `initialize_context` is recognized and required
+            try:
+                secrets: list[tuple[str | None, VaultSecret]] = \
+                    CLI.setup_vault_secrets(DataLoader(), vault_ids, auto_prompt=False, initialize_context=False) # type: ignore
+            except TypeError:
+                secrets: list[tuple[str | None, VaultSecret]] = \
+                    CLI.setup_vault_secrets(DataLoader(), vault_ids, auto_prompt=False)
             return list(map(VaultKey.from_ansible_secret, secrets))
 
     def __repr__(self) -> str:
