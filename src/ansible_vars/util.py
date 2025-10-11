@@ -3,7 +3,6 @@
 # Standard library imports
 import os, atexit
 from glob import glob
-from pathlib import Path
 from functools import wraps
 from datetime import datetime
 from typing import Callable
