@@ -38,7 +38,7 @@ class DiffLogger():
         You can specify an optional comment string which will be included.
         '''
         # Check if any changes happened
-        diff: list[str] = curr_vault.diff(prev_vault, context_lines=0, show_filenames=True).split('\n')
+        diff: str | None = curr_vault.diff(prev_vault, context_lines=0, show_filenames=True)
         if not force and not diff:
             return None
         # Build entry
@@ -55,7 +55,7 @@ class DiffLogger():
         # Diff
         lines.append('DIFF')
         if diff:
-            lines += diff
+            lines += diff.split('\n')
         else:
             lines.append('No changes.')
         #lines.append(OUTER_SEP)
