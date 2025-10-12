@@ -233,7 +233,23 @@ Set a fixed salt as you would with `-S <salt>`.
 
 ### Python library
 
-When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module.
+When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module. An example:
+
+```py
+from ansible_vars.vault_crypt import VaultKeyring
+from ansible_vars.vault import VaultFile
+
+# Load our vault file (use `VaultFile.create` to make a new one)
+keyring: VaultKeyring = VaultKeyring(detection_source='/tmp/ansible') # auto-detect keys from Ansible home
+vault: VaultFile = VaultFile('/tmp/ansible/my_vault.yml', keyring)
+# `value` will be 2 for a vault containing `{ 'store': { 'values': [ 1, 2, 3 ], ... }, ... }`
+value: int = vault.get(path=( 'store', 'values', 1 ), default=0, decrypt=False)
+new_value: int = value + 2
+# Append a new value to the 'values' list
+vault.set(path=( 'store', 'values', '+' ), value=new_value, encrypt=False)
+# Save resulting vault to disk
+vault.save()
+```
 
 #### vault module
 
