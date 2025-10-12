@@ -10,6 +10,7 @@ from ruamel.yaml import YAML
 
 from ansible_vars.vault import VaultFile, Vault, EncryptedVar
 from ansible_vars.vault_crypt import VaultKeyring, VaultKey
+from ansible_vars.constants import APPEND_SENTINEL
 
 JSONObject: TypeAlias = Any
 
@@ -218,7 +219,7 @@ class TestVault:
         got: Any = vault.get('a')
         assert isinstance(got, list) and len(got) == 1, 'expected vault data to contain list'
         # Add item to list
-        vault.set(( 'a', 1 ), 2)
+        vault.set(( 'a', APPEND_SENTINEL ), 2)
         got = vault.get('a')
         assert len(got) == 2 and got[1] == 2, 'expected new value in list'
 

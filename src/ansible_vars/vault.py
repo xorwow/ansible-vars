@@ -15,7 +15,8 @@ from ruamel.yaml.constructor import Constructor
 from ruamel.yaml.comments import CommentedMap
 
 # Internal module imports
-from .constants import ThrowError, octal, Indexable, ChangeList, MatchLocation, SENTINEL_KEY, EDIT_MODE_HEADER, ENCRYPTED_VAR_TAG
+from .constants import ThrowError, octal, Indexable, ChangeList, MatchLocation, \
+                       SENTINEL_KEY, EDIT_MODE_HEADER, ENCRYPTED_VAR_TAG, APPEND_SENTINEL
 from .vault_crypt import VaultKey, VaultKeyring
 from .errors import KeyExistsError, NoVaultKeysError, YAMLFormatError
 
@@ -242,11 +243,12 @@ class Vault():
             self, path: DictPath, value: Any, overwrite: bool | Type[ThrowError] = True, # type: ignore
             create_parents: bool | Type[ThrowError] = True, encrypt: bool = False
         ) -> bool:
-        '''
+        f"""
         Creates or updates a value in the vault's variables. The value has to be serializable into YAML.
         If the last/only key of the key path does not exist yet, it will be created.
         If the variable is set successfully, `True` is returned. If any of the below checks fail, `False` is returned.
-        Be aware that appending a new entry to a list requires the key to be equal to the length of the list (i.e. largest index + 1).
+        Be aware that appending a new entry to a list requires the key to be equal to the length of the list (i.e. largest index + 1),
+        or to be the special symbol '{ APPEND_SENTINEL }'.
         On updated leaf values, comment and Jinja2 metadata is preserved.
         When appending a new value or editing an indexable item, metadata may get messed up.
 
@@ -262,7 +264,7 @@ class Vault():
         - `encrypt`: Controls if the value should be recursively encrypted before storing it (only plain `str`s get encrypted)
           - `True`: Attempt to copy and convert the value('s leaf values) into an `EncryptedVar` before storing it
           - `False`: Store the value as-is
-        '''
+        """
         path: tuple[Hashable, ...] = Vault._to_path(path) # XXX typer complains if not explicitly re-typed
         # Encrypt value if necessary
         if encrypt:
@@ -288,10 +290,13 @@ class Vault():
             if not isinstance(parent, dict | list):
                 raise TypeError(f"Indexing into a { type(parent) } is not supported ({ par_path })")
             # Check if index is of correct type
-            if isinstance(parent, list) and type(segment) is not int:
-                raise TypeError(f"Type of list index has to be int, got { type(segment) } ({ par_path }[{ segment }])")
+            if isinstance(parent, list) and segment != APPEND_SENTINEL and type(segment) is not int:
+                raise TypeError(f"Type of list index has to be int (or str as '{ APPEND_SENTINEL }'), got { type(segment) } ({ par_path }[{ segment }])")
             # Check if the current segment has to be created in the parent
-            if (isinstance(parent, dict) and segment not in parent) or (isinstance(parent, list) and cast(int, segment) >= len(parent)):
+            if (
+                (isinstance(parent, dict) and segment not in parent) or \
+                (isinstance(parent, list) and (segment == APPEND_SENTINEL or cast(int, segment) >= len(parent)))
+            ):
                 if not is_last:
                     if create_parents is ThrowError:
                         raise KeyError(f"Parents of { '.'.join(map(str, path)) } could not be resolved ({ segment } not in { par_path })")
@@ -299,9 +304,9 @@ class Vault():
                         return False
                 # Create nested dictionary as next parent or set value of leaf, depending on index
                 segment_value: Any = value if is_last else CommentedMap()
-                # Check that a new list item has a specified index of (largest list index + 1)
+                # Check that a new list item has a specified index of (largest list index + 1) or is the special append sentinel
                 # This is done because the method of creating an index of e.g. 7 in a list of length 3 is ambiguous
-                if isinstance(parent, list) and segment != len(parent):
+                if isinstance(parent, list) and segment != len(parent) and segment != APPEND_SENTINEL:
                     raise IndexError(f"Creating new list item, but index { segment } exceeds appendment index { len(parent) } ({ par_path })")
                 # Set value
                 if isinstance(parent, dict):
@@ -316,6 +321,8 @@ class Vault():
                     return False
                 parent[segment] = value # type: ignore
             # Advance parent
+            if isinstance(parent, list) and segment == APPEND_SENTINEL:
+                segment = len(parent) - 1 # element has already been appended
             parent = parent[segment] # type: ignore
             par_path = f"{ par_path }.{ segment }"
         return True

@@ -45,6 +45,11 @@ EDIT_MODE_HEADER: str = f"""
 
 """.lstrip('\n')
 
+# Special codes
+
+# Marks that a new element should be appended to a list in a `Vault.set` call
+APPEND_SENTINEL: str = '+'
+
 # Diff log filenames
 
 # Default filename for a plaintext vault log

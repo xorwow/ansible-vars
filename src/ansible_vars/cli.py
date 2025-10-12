@@ -33,7 +33,7 @@ from pygments.formatters import TerminalFormatter, Terminal256Formatter, Termina
 from .vault import VaultFile, EncryptedVar, ProtoEncryptedVar
 from .vault_crypt import VaultKey, VaultKeyring
 from .util import DiffFileLogger, VaultDaemon
-from .constants import Unset, MatchLocation, SENTINEL_KEY
+from .constants import Unset, MatchLocation, SENTINEL_KEY, APPEND_SENTINEL
 from .errors import YAMLFormatError, UnsupportedGenericFileOperation
 
 ## CLI argument parsing
@@ -183,13 +183,13 @@ The value will be shown in (recursively) decrypted form.
 JSON mode formatting:
 - [ ... ] or { ... } for lists/dictionaries, "<value>" for strings, <value> for numbers
 ''',
-    'cmd_set': '''
+    'cmd_set': f"""
 Creates or updates a node in a vault with a YAML value, optionally encrypting the value('s string leaves) first using the configured encryption key.
-For creating a new list entry, the last specified key segment has to equal the largest index of the list plus one (e.g. `[5]` for a list of length 5).
+Any unknown keys along the given path will be created as dictionaries. You can append an element to a list by using the special key '{ APPEND_SENTINEL }'.
 The value is interpreted as YAML code.
 
 [!] Creating new nodes or changing non-leaf nodes may break/remove trailing comments and Jinja2 blocks.
-''',
+""",
     'cmd_del': '''
 Deletes a node from a vault if it exists.
 
