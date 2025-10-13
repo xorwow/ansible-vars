@@ -74,6 +74,7 @@ class ActionModule(ActionBase):
                 file = os.path.join(base_dir, file)
             path: tuple[str | int] = tuple(args['path'] if isinstance(args['path'], list) else [ args['path'] ])
             create_file: bool = args.get('create_file', False)
+            passphrase: str = args.get('passphrase', None)
 
             # Collect GET args
             default: Any = args.get('default', OMITTED)
@@ -81,7 +82,6 @@ class ActionModule(ActionBase):
             # Collect SET args
             value: Any = args.get('value', OMITTED)
             encrypt: bool = args.get('encrypt', True)
-            passphrase: str = args.get('passphrase', None)
             create_path: bool = args.get('create_path', True)
             log_changes: str | None = args.get('log_changes', None)
 
