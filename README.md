@@ -231,6 +231,106 @@ Invert the default creation mode for files: If unset or `no`, files are created 
 
 Set a fixed salt as you would with `-S <salt>`.
 
+### Action plugin
+
+`ansible-vars` comes with an associated Ansible action plugin that allows you to query and edit vault files from an Ansible task.
+
+#### Installation
+
+To install it, add a file called `vault.py` to your Ansible action plugin folder, e.g. `$ANSIBLE_HOME/plugins/action`, with the following content:
+
+```py
+from ansible_vars.ansible_plugins.action.vault import ActionModule # noqa: F401
+```
+
+This loads the real action plugin from the `ansible_vars.ansible_plugins` library.
+
+#### Documentation
+
+*Note: You can ignore this chapter if you're only interested in a manual review of the documentation. The chapter describes how to include the plugin documentation in automated documentation parsing e.g. via `ansible-doc`. For manual review, check `src/ansible_vars/ansible_plugins/modules/vault.py` directly.*
+
+The module is documented in a special Ansible module stub, which is needed as `ansible-doc` cannot parse documentation from an action plugin directly. The stub has the same name as the action plugin.
+
+However, installation isn't as straight-forward and dynamic as the action plugin itself, as Ansible's documentation parser does not execute the modules, but uses "dumb" parsing to directly extract the documentation from the raw module file contents. For this reason, we have to either copy or link the module file directly from the package / this repository.
+
+Create a file called `vault.py` in your Ansible module folder, e.g. `$ANSIBLE_HOME/plugins/modules`, and copy the contents of `src/ansible_vars/ansible_plugins/modules/vault.py` into it. Alternatively, find out where your `ansible_vars` package is loaded from and link the file directly.
+
+You can now use `ansible-doc -t module vault` to get a formatted view of the plugin documentation, and linters should also detect it.
+
+To keep the documentation up-to-date with changes in the original package, you can use a provided helper function, which will print a warning if the documentation is outdated. Amend your action plugin as follows:
+
+```py
+import os.path
+
+# Import real action plugin
+from ansible_vars.ansible_plugins.action.vault import ActionModule, check_docs_outdated # noqa: F401
+
+# Check for outdated documentation due to the manual copying/linking of the documentation module stub
+this_file: str = os.path.abspath(__file__)
+module_path: str = os.path.abspath(
+    # ../modules/vault.py
+    os.path.join(os.path.dirname(this_file), os.path.pardir, 'modules', os.path.basename(this_file))
+)
+check_docs_outdated(module_path)
+```
+
+This code snippet assumes the following directory structure:
+- `<plugin folder>`
+  - `action`
+    - `vault.py`
+  - `modules`
+    - `vault.py`
+
+#### Usage
+
+The plugin supports querying ("GET mode") and updating ("SET mode") variables in a vault or vars file. The mode is chosen based on the presence of the `value` argument. The behavior is roughly equivalent to the `get` and `set` methods for `VaultFile` objects. Logging vault changes is also based on the `--log|-l` option of `ansible-vars`. For full documentation of the available arguments and returned data, see the previous chapter. Some examples:
+
+```yaml
+- name: Get a passphrase from a vault
+  vault:
+    file: vars/auth.yml
+    path: [ root_pws, 0, my_machine ] # VAULT_DATA['root_pws'][0]['my_machine']
+    default: NO_PASS
+  register: root_pass
+- name: Output passphrase
+  debug:
+    msg: >-
+      The root passphrase for my_machine is {{ 'unset' if root_pass.is_default else root_pass.value }}.
+      It is stored {{ 'encrypted' if root_pass.is_encrypted else 'plainly' }}.
+
+- name: Update a value in a vault, creating the vault if necessary
+  vault:
+    file: "host_vars/{{ inventory_hostname }}/ips.yml"
+    create_file: true
+    path: ssh # shorthand for single-segment path `[ ssh ]`
+    value: 123.99.42.1
+    encrypt: false
+
+- name: Store a new passphrase in a vault, and log the changes
+  vault:
+    file: vars/backups.yml
+    path: [ repos, my_machine, pass ]
+    value: my_secret_passphrase
+    encrypt: true # uses the first auto-detected secret for encryption
+    create_path: true # create any non-existent keys as dictionaries along the way
+    log_changes: /tmp/backup_changes.yml # logs any changes to this file as encrypted YAML, using the same key as the SET action
+
+- name: Append a complex element to the list data_points
+  vault:
+    file: /tmp/data.yml
+    create_file: true
+    path: [ data_points, +, raw ] # + is a special symbol: if a list is encountered here, append to it
+    create_path: true
+    value: { x: [ 12.34, 56.78 ] }
+    encrypt: true
+    passphrase: my_secret_passphrase # uses a custom passphrase for encryption
+    log_changes: /tmp # creates a key-unique log file in /tmp based on a portion of the hash of the passphrase
+```
+
+Beware that newly created vaults are not fully encrypted, but use hybrid encryption. Also note that using Ansible's diff mode may leak secrets to your terminal and attached callback plugins, as the diffs are based on the fully decrypted vault contents.
+
+The plugin can't handle concurrently modifying the same vault file. Use `serial: 1` or `throttle: 1` in your play to avoid this. Concurrently querying vaults or editing multiple different vaults in parallel works fine.
+
 ### Python library
 
 When using `ansible-vars` as a library, import any of these modules from the `ansible_vars` module. An example:
@@ -302,5 +402,4 @@ When editing a file or creating a daemon, decrypted vaults are written to disk t
 ## Extension plans
 
 - I'm debating creating my own Jinja2 YAML round-trip parser to alleviate the metadata preservation issues of the current parser.
-- I may add an Ansible action plugin for updating vault variables directly from an Ansible task (useful e.g. for automatically storing passwords that are set to a random value by Ansible). I am currently using a small script for this task.
-- I want to create `ansible-vars` system packages for common repositories.
+- I plan to create `ansible-vars` system packages for common repositories at some point.
