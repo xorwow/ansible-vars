@@ -96,7 +96,7 @@ class ActionModule(ActionBase):
             config_dir: str = os.path.dirname(CONFIG_PATH) if CONFIG_PATH else (task_vars or {}).get('playbook_dir', None)
             keyring: VaultKeyring = VaultKeyring(detection_source=config_dir)
             if passphrase:
-                key: VaultKey = VaultKey(passphrase, str(sha1(passphrase.encode()))[:8])
+                key: VaultKey = VaultKey(passphrase, sha1(passphrase.encode()).hexdigest()[:8])
                 keyring.keys.insert(0, key)
                 keyring.default_encryption_key = key
 
