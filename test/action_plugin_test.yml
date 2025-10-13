@@ -1,0 +1,140 @@
+# Not tested automatically. Run via `ansible-playbook action_plugin_test.yml [-D]`.
+
+- hosts: localhost
+  connection: local
+  become: false
+  name: Test vault action plugin
+  gather_facts: false
+  tasks:
+    - name: Setup
+      block:
+        - name: Prepare example vault
+          copy:
+            dest: /tmp/vault.yml
+            content: 'test: [ 1, 2, 3 ]'
+        - name: Ensure secondary vault does not exist yet
+          file:
+            path: /tmp/new_vault.yml
+            state: absent
+    - name: GET test (simple)
+      block:
+        - name: Get value from vault
+          vault:
+            file: /tmp/vault.yml
+            path: [ test, 1 ]
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == 2
+              - not result.is_default
+              - not result.is_encrypted
+            fail_msg: "Could not get the expected value from the vault ({{ result }})."
+    - name: GET test (non-existent key)
+      block:
+        - name: Get non-existent value from vault
+          vault:
+            file: /tmp/vault.yml
+            path: [ test, 3 ]
+            default: null
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == None
+              - result.is_default
+              - not result.is_encrypted
+            fail_msg: "Could not get fallback value for a non-existent key ({{ result }})."
+    - name: SET test (simple)
+      block:
+        - name: Create a new vault and set a value
+          vault:
+            file: /tmp/new_vault.yml
+            create_file: true
+            path: my_var
+            value: [ my_value ]
+            encrypt: false
+          register: result
+        - name: Check if file was created
+          stat:
+            path: /tmp/new_vault.yml
+          register: stat
+          failed_when: not stat.stat.exists
+        - name: Check result
+          assert:
+            that:
+              - result.value == [ 'my_value' ]
+              - not result.is_default
+              - not result.is_encrypted
+            fail_msg: "Vault was not populated correctly ({{ result }})."
+        - name: Get value from vault
+          vault:
+            file: /tmp/new_vault.yml
+            path: my_var
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == [ 'my_value' ]
+              - not result.is_default
+              - not result.is_encrypted
+            fail_msg: "Could not get the expected value from the vault ({{ result }})."
+    - name: SET test (encryption)
+      block:
+        - name: Add an encrypted value to a vault
+          vault:
+            file: /tmp/new_vault.yml
+            path: [ auth, login ]
+            value: my_secret_passphrase
+            create_path: true
+            encrypt: true
+            passphrase: secret
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == 'my_secret_passphrase'
+              - not result.is_default
+              - result.is_encrypted
+            fail_msg: "Vault was not populated correctly ({{ result }})."
+        - name: Get value from vault
+          vault:
+            file: /tmp/new_vault.yml
+            path: [ auth, login ]
+            passphrase: secret
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == 'my_secret_passphrase'
+              - not result.is_default
+              - result.is_encrypted
+            fail_msg: "Could not get the expected value from the vault ({{ result }})."
+    - name: SET test (append)
+      block:
+        - name: Append a value to a list in a vault
+          vault:
+            file: /tmp/vault.yml
+            path: [ test, + ]
+            value: 4
+            encrypt: false
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == 4
+              - not result.is_default
+              - not result.is_encrypted
+            fail_msg: "Vault was not populated correctly ({{ result }})."
+        - name: Get value from vault
+          vault:
+            file: /tmp/vault.yml
+            path: test
+          register: result
+        - name: Check result
+          assert:
+            that:
+              - result.value == [ 1, 2, 3, 4 ]
+              - not result.is_default
+              - not result.is_encrypted
+            fail_msg: "Could not get the expected value from the vault ({{ result }})."
