@@ -2,11 +2,9 @@
 
 *Manage vaults and variable files for Ansible.*
 
-## TL;DR
-
-Replaces the `ansible-vault` command with `ansible-vars`, which supports encrypting individual variables, not just entire files. Also provides a CLI and Python interface for querying and modifying Ansible variable files and vaults.
-
 ## Introduction
+
+**TL;DR:** Replaces the `ansible-vault` command with `ansible-vars`, which supports encrypting individual variables, not just entire files. Also provides a CLI, Ansible, and Python interface for querying and modifying Ansible variable files and vaults.
 
 This project was motivated by a need to have Ansible vaults readable to humans and external programs like `grep` without a manual decryption step, while keeping secret values in these vaults secure from prying eyes. Ansible actually supports keeping vaults plain-text and only encrypting individual string variables, but this feature is not widely known or used and editing such files is not supported by the `ansible-vault` tool.
 
