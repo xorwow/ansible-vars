@@ -66,10 +66,11 @@ tips:
 - For brevity, the term 'vault' is used in help messages to denote fully encrypted, partially encrypted and plain vars files.
 - When a command asks for a vault file path it actually accepts multiple kinds of search path:
   - You can specify a full or relative path to a vault file just as usual. This path will always be tried first.
-  - If you specify `h:<path>`, `g:<path>`, or `v:<path>`, it looks in `./host_vars`, `./group_vars`, or `./vars`, respectively.
-  - If a resolved path is a directory instead of a file, it looks for or creates a `main.yml` in that directory.
+  - If you specify `h:<path>`, `g:<path>`, or `v:<path>`, it looks in `./host_vars/<path>`, `./group_vars/<path>`, or `./vars/<path>`, respectively.
+  - If a resolved path is a directory instead of a file, it looks for a `main.yml` in that directory.
   - For example, to open the file `/ansible/host_vars/my_host/main.yml`, you may run the command in `/ansible` and specify `h:my_host`.
   - For vault creation with the `--make-parents` flag, `<path>` will create the file `<path>`, while `<path>/` will create `<path>/main.yml`.
+  - The prefixes can be changed to a custom mapping via the environment (see `AV_SHORTCUT_MAPPING` description in project README).
 - Data keys are split into segments (e.g. `root['my_key'][0]` would become `'my_key', 0`) for easier parsing.
     - When specifying a key segment which is a number (e.g. a list index), surround it in brackets (`[2]`) to differentiate it from a string.
     - If you need to actually use the string `[2]`, add a set of brackets to escape it (`[[2]]` -> `'[2]'`, `[[[2]]]` -> `'[[2]]'`, ...).
@@ -197,6 +198,8 @@ Deletes a node from a vault if it exists.
 '''
 }
 
+# Env vars
+
 # Not using defaults directly because we also want to ignore empty values
 DEFAULT_EDITOR: str = os.environ.get('EDITOR', None) or ('notepad.exe' if os.name == 'nt' else 'vi')
 DEFAULT_COLOR_MODE: str = os.environ.get('AV_COLOR_MODE', None) or ('256' if sys.stdout.isatty() else 'none')
@@ -210,6 +213,25 @@ DEFAULT_RESOLVER_ROOT: str | None = os.environ.get('AV_RESOLVER_ROOT', None) or 
 if DEFAULT_RESOLVER_ROOT:
     os.chdir(DEFAULT_RESOLVER_ROOT)
 
+# Load custom shortcut map (e.g. `m: -> my_vars, ...`) from env if available, else use default shortcuts
+# When set to an exception, shortcuts are disabled and an error will be shown (after the print fn definition)
+shortcut_map: dict[str, str] | Exception = {}
+if (_raw_shortcut_map := os.environ.get('AV_SHORTCUT_MAP', '')):
+    try:
+        shortcut_map = json.loads(_raw_shortcut_map)
+        if not isinstance(shortcut_map, dict):
+            raise TypeError(f"Shortcut map must be a JSON dictionary, got { type(shortcut_map).__name__ }")
+        if not all( len(key.rstrip(':')) == 1 for key in shortcut_map.keys() ):
+            raise ValueError('All shortcuts must be a single character with optional colon suffix')
+        # Ensure all keys are in `<char>:` format
+        shortcut_map = { f"{ key[0] }:": value for key, value in shortcut_map.items() }
+    except Exception as e:
+        shortcut_map = e
+else:
+    shortcut_map = { 'h:': 'host_vars', 'g:': 'group_vars', 'v:': 'vars' }
+
+# CLI args
+
 args: ArgumentParser = ArgumentParser(
     prog = 'ansible-vars',
     epilog = HELP['epilog'],
@@ -219,8 +241,9 @@ args: ArgumentParser = ArgumentParser(
 
 # Custom shell completion for prefixed paths
 def _prefixed_path_completer(prefix: str, **_) -> list[str]:
-    has_prefix: bool = len(prefix) > 1 and prefix[:2] in ( 'h:', 'g:', 'v:' )
-    resolved_prefix: str | None = { 'h:': 'host_vars', 'g:': 'group_vars', 'v:': 'vars' }[prefix[:2]] if has_prefix else None
+    shortcuts: dict[str, str] = {} if isinstance(shortcut_map, Exception) else shortcut_map
+    has_prefix: bool = len(prefix) > 1 and prefix[:2] in shortcuts.keys()
+    resolved_prefix: str | None = shortcuts[prefix[:2]] if has_prefix else None
     if resolved_prefix and os.path.isdir(os.path.abspath(resolved_prefix)):
         # Replace prefix with actual path
         path_prefix: str = prefix[:3] if (len(prefix) > 2 and prefix[2] == os.path.sep) else prefix[:2]
@@ -574,16 +597,16 @@ def resolve_vault_path(search_path: str, create_mode: bool = False, allow_dirs: 
     abspath: str = os.path.abspath(search_path)
     if not os.path.exists(abspath) or (not allow_dirs and os.path.isdir(abspath)):
         # Check for prefix search notation
-        if len(search_path) > 1 and search_path[1] == ':' and (prefix := search_path[0]) in [ 'h', 'g', 'v' ]:
-            resolved: dict = { 'h': 'host_vars', 'g': 'group_vars', 'v': 'vars' }
-            abspath = os.path.abspath(resolved[prefix])
+        shortcuts: dict[str, str] = {} if isinstance(shortcut_map, Exception) else shortcut_map
+        if len(search_path) > 1 and search_path[1] == ':' and (prefix := search_path[:2]) in shortcuts.keys():
+            abspath = os.path.abspath(shortcuts[prefix])
             if len(search_path) > 2:
                 abspath = os.path.join(abspath, search_path[2:].lstrip(os.path.sep))
     # Check for main.yml in directory
     if (not allow_dirs and os.path.isdir(abspath)) or (create_mode and search_path.endswith('/')):
         abspath = os.path.join(abspath, 'main.yml')
     # Debug output
-    debug(f"Resolved path { search_path } to { abspath }")
+    debug(f"Resolved path '{ search_path }' to '{ abspath }'.")
     # If we're in creation mode, we can't known if the file exists yet, so we check prefix notation first
     if create_mode:
         return abspath
@@ -603,7 +626,10 @@ if not config.debug:
 if DEFAULT_RESOLVER_ROOT:
     debug(f"Changed resolver root to '{ DEFAULT_RESOLVER_ROOT }'.")
 
-debug(f"Inferring available secrets from environment or { config.detection_source or 'present working directory' }")
+if isinstance(shortcut_map, Exception):
+    print(f"Shortcut map could not be loaded from env, got { type(shortcut_map).__name__ }: { shortcut_map }", Color.BAD, stderr=True)
+    shortcut_map = {}
+debug(f"Vault path shortcut map: { ', '.join(map(lambda s: f'\'{ s[0] }\' -> \'{ s[1] }\'', shortcut_map.items())) or 'disabled' }")
 
 # Load vault keys
 

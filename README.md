@@ -137,6 +137,7 @@ ansible-vars get --json g:database_hosts 'my_key' '[4]' '133'
 - The directories `host_vars`, `group_vars`, and `vars` are common vault locations. When in their parent directory, you can use the prefixes `h:`, `g:`, and `v:` in any vault path you specify, followed by a path relative to them. Wherever a directory is not expected as a path, supplying a directory path will also append a `main.yml` to the path automatically. In summary, this lets you type `h:my_host` when you actually mean `./host_vars/my_host/main.yml`. Shell completion for these prefixed paths is provided.
     - These three directories are also default sources for the `file-daemon` command.
     - For vault creation with the `--make-parents` flag, a path like `h:my_host` would be ambiguous as to the expanded path being `./host_vars/my_host` or `./host_vars/my_host/main.yml`, since the directory does not exist yet. `ansible-vars` will assume the first case, unless you end your search path with a / like `h:my_host/`.
+    - The prefixes can be changed to a custom mapping via the environment (see `AV_SHORTCUT_MAPPING` description).
 - When referencing vault traversal keys, you can specify numbers to access lists and number-indexed dictionaries. However, just specifying `2` as a key segment will resolve into the string `'2'`. Instead, you should write `[2]` to mark it as a number index. If you need to specify the string `'[2]'` for some reason, you can escape it by adding another set of brackets (and so on).
 
 ### Commands
@@ -228,6 +229,16 @@ Invert the default creation mode for files: If unset or `no`, files are created 
 #### AV_SALT
 
 Set a fixed salt as you would with `-S <salt>`.
+
+#### AV_SHORTCUT_MAP
+
+Overrides the default vault path shortcuts (`h:` for `host_vars`, `g:` for `group_vars`, `v:` for `vars`) with custom shortcuts. Should be a JSON dictionary mapping a prefix character to a path element (e.g. `{ "h": "prod/host_vars", "H": "exp/host_vars" }`). The prefix character followed by a colon will be interpreted as the associated path element when specifying a vault path, including shell auto-completion:
+
+```sh
+ansible-vars view g:all.yml # resolves to `group_vars/all.yml` via the default shortcuts map
+AV_SHORTCUT_MAP='{}' ansible-vars view g:all.yml # resolves to literal `g:all.yml` because the map is empty
+AV_SHORTCUT_MAP='{ "m": "my_vars" }' ansible-vars view m:data.yml # resolves to `my_vars/data.yml` via our new shortcut
+```
 
 ### Action plugin
 
