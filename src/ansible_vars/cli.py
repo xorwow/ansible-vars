@@ -471,9 +471,11 @@ class Color(StrEnum):
     TREE_UNCHANGED = 'white'
 
 # Overwrite standard print function with color support
-def print(msg: Any, color: Color = Color.INFO, **print_args) -> None:
+def print(msg: Any, color: Color = Color.INFO, stderr: bool = False, **print_args) -> None:
     '''Outputs text to the console, coloring it if `color` is set to True in this module.'''
     msg = colored(str(msg), color=color.value) if config.color_mode != 'none' else str(msg) # type: ignore
+    if stderr:
+        print_args.update({ 'file': sys.stderr })
     std_print(msg, **print_args)
 
 def debug(msg: Any, prefix: str = '(debug) ', **print_args) -> None:
@@ -490,7 +492,9 @@ highlight_style: StyleMeta = get_style_by_name(os.environ.get('ANSIBLE_VARS_THEM
 json_highlight_lexer = JsonLexer(stripall=True)
 yaml_highlight_lexer = YamlJinjaLexer(stripall=True)
 if config.color_mode != 'none':
-    _formatter: Type[Formatter] = { 'basic': TerminalFormatter, '256': Terminal256Formatter, 'truecolor': TerminalTrueColorFormatter }[config.color_mode]
+    _formatter: Type[Formatter] = {
+        'basic': TerminalFormatter, '256': Terminal256Formatter, 'truecolor': TerminalTrueColorFormatter
+    }[config.color_mode]
     highlight_formatter: Formatter = _formatter(linenos=False, cssclass="source", style=highlight_style)
 
 def print_json(code: str) -> None:
@@ -499,11 +503,16 @@ def print_json(code: str) -> None:
         return std_print(code)
     std_print(highlight(code, json_highlight_lexer, highlight_formatter).strip('\n'))
 
-def print_yaml(code: str) -> None:
-    '''Print Jinja2 YAML code with syntax highlighting if a `color_mode` is available.'''
+def print_yaml(code: str, consider_pipe: bool = False) -> None:
+    '''
+    Print Jinja2 YAML code with syntax highlighting if a `color_mode` is available.
+    When in a pipe and `consider_pipe` is set, no newline is printed after the code.
+    This is useful for piping raw string values from a `get` command into another program.
+    '''
+    pipe_args: dict = { 'end': '' } if (consider_pipe and not sys.stdout.isatty()) else {}
     if config.color_mode == 'none':
-        return std_print(code)
-    std_print(highlight(code, yaml_highlight_lexer, highlight_formatter).strip('\n'))
+        return std_print(code, **pipe_args)
+    std_print(highlight(code, yaml_highlight_lexer, highlight_formatter).strip('\n'), **pipe_args)
 
 def print_diff(diff: str | None) -> None:
     '''Print a diff with highlighting if a `color_mode` is available.'''
@@ -584,22 +593,21 @@ def resolve_vault_path(search_path: str, create_mode: bool = False, allow_dirs: 
 
 ## CLI logic
 
-if DEFAULT_RESOLVER_ROOT:
-    debug(f"Changed resolver root to { DEFAULT_RESOLVER_ROOT }")
-
-# Print all exceptions unless we're in debug mode
+# Print short form of all exceptions unless we're in debug mode
 def _exc_hook(exctype, value, traceback) -> None:
-    if config.debug:
-        sys.__excepthook__(exctype, value, traceback)
-    else:
-        print(f"{ value.__class__.__name__ }: { value }", Color.BAD)
-        print('Use --debug to get the full stacktrace')
-sys.excepthook = _exc_hook
+    print(f"{ exctype.__name__ }: { value }", Color.BAD, stderr=True)
+    print('Use --debug to get the full stacktrace')
+if not config.debug:
+    sys.excepthook = _exc_hook
 
-# Load vault keys
+if DEFAULT_RESOLVER_ROOT:
+    debug(f"Changed resolver root to '{ DEFAULT_RESOLVER_ROOT }'.")
 
 debug(f"Inferring available secrets from environment or { config.detection_source or 'present working directory' }")
 
+# Load vault keys
+
+debug(f"Inferring available secrets from environment or '{ config.detection_source or os.getcwd() }'.")
 _explicit_keys: list[VaultKey] = [ VaultKey(passphrase, vault_id=id) for id, passphrase in config.keys ]
 keyring: VaultKeyring = VaultKeyring(
     _explicit_keys.copy(), default_salt=config.fixed_salt,
@@ -642,7 +650,7 @@ if config.command == 'keyring':
         if _explicit_keys:
             print('\n'.join(_format_key_list(_explicit_keys)))
         else:
-            print('No keys loaded')
+            print('No keys loaded.')
         # Show keys loaded by auto-detection
         print('\nAuto-detected keys:', Color.GOOD)
         if config.detect_keys:
@@ -652,7 +660,7 @@ if config.command == 'keyring':
             else:
                 print('No keys detected.')
         else:
-            print('Function disabled by flag', Color.MEH)
+            print('Function disabled by flag.', Color.MEH)
     # JSON mode with passphrases
     elif config.show_passphrases:
         print_json(json.dumps({ key.id: _passphrase_from_key(key, quote=False) for key in keyring.keys }, indent=2))
@@ -717,14 +725,14 @@ if config.command in [ 'create', 'edit' ]:
                     try:
                         new_vault = VaultFile.from_editable(vault, new_editable)
                     except YAMLFormatError as e:
-                        print('Invalid YAML format:', Color.BAD)
-                        print(e.parent if e.parent else e, Color.BAD)
-                        print('Note that Ansible YAML must have a dictionary as a root.', Color.BAD)
+                        print('Invalid YAML format:', Color.BAD, stderr=True)
+                        print(e.parent if e.parent else e, Color.BAD, stderr=True)
+                        print('Note that Ansible YAML must have a dictionary as a root.', Color.BAD, stderr=True)
                         decision: str = input(colored('Continue editing? (discard changes on no) [Yn] > ', Color.MEH.value))
                         if decision.strip().lower() not in [ 'n', 'no' ]:
                             continue
                         else:
-                            print('Changes discarded.', Color.BAD)
+                            print('Changes discarded.', Color.BAD, stderr=True)
                             break
                     new_vault.save()
                     print(f"Saved changes!", Color.GOOD)
@@ -797,12 +805,12 @@ if config.command == 'info':
         if encrypted_leaves:
             print('\n'.join([ f"- { format_key_path(key) }" for key in encrypted_leaves ]))
         else:
-            print('None', Color.MEH)
+            print('None.', Color.MEH)
         print('\nPlain leaf values:', Color.GOOD)
         if plain_leaves:
             print('\n'.join([ f"- { format_key_path(key) }" for key in plain_leaves ]))
         else:
-            print('None', Color.MEH)
+            print('None.', Color.MEH)
 
 # Encrypt & Decrypt & Is-Encrypted commands
 
@@ -815,7 +823,7 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
             vault = VaultFile(vault_path, keyring=keyring)
             is_enc: bool = vault.full_encryption
         except YAMLFormatError as e:
-            print('Invalid vault format, will be treated as a generic file', Color.MEH)
+            print('Invalid vault format, will be treated as a generic file.', Color.MEH)
             with open(vault_path) as file:
                 is_enc = VaultKey.is_encrypted(file.read())
             is_generic = True
@@ -869,13 +877,13 @@ if config.command in [ 'encrypt', 'decrypt', 'is-encrypted' ]:
 if config.command == 'rekey':
     vault_path: str = resolve_vault_path(config.vault_path)
     if not config.encryption_key:
-        print(f"No explicit encryption key specified, falling back to '{ keyring.encryption_key.id }'", Color.MEH)
+        print(f"No explicit encryption key specified, falling back to '{ keyring.encryption_key.id }'.", Color.MEH)
     # Since ciphers are usually not changed from load to save, we force re-encryption by loading from an editable
     vault = VaultFile(vault_path, keyring=keyring)
     vault = VaultFile.from_editable(vault, vault.as_editable())
     vault.save()
     print(
-        f"Re-encrypted vault with key '{ keyring.encryption_key.id }' and a { 'fixed' if config.fixed_salt else 'random' } salt",
+        f"Re-encrypted vault with key '{ keyring.encryption_key.id }' and a { 'fixed' if config.fixed_salt else 'random' } salt.",
         Color.GOOD
     )
 
@@ -918,7 +926,7 @@ if config.command == 'grep':
     targets: list[VaultFile] = []
     for path in target_files:
         try: targets.append(VaultFile(path, keyring=keyring))
-        except: debug(f"Skipping non-YAML file { path }")
+        except: debug(f"Skipping non-YAML file '{ path }'.")
     # Search targets
     matches: dict = {}
     for vault in targets: # type: ignore
@@ -1117,7 +1125,7 @@ if config.command == 'file-daemon':
         print('Goodbye.')
     # Create daemons
     def _error_callback(daemon: VaultDaemon, operation: str, err: Exception) -> None:
-        print(f"An error occurred in { daemon } during { operation } operation:", Color.BAD)
+        print(f"An error occurred in { daemon } during { operation } operation:", Color.BAD, stderr=True)
         print(err, Color.BAD)
     def _debug_out(daemon: VaultDaemon, msg: Any) -> None:
         debug(f"FileDaemon({ daemon.target_file if daemon.target_file else daemon.target_dir }): { msg }")
@@ -1169,7 +1177,7 @@ if config.command in [ 'get', 'set', 'del' ]:
         # Output nothing but the raw YAML
         elif config.quiet:
             yaml_code: str = vault._dump_to_str(value).strip('\n') if isinstance(value, dict | list | tuple) else str(value)
-            print_yaml(yaml_code)
+            print_yaml(yaml_code, consider_pipe=True) # print without newline if we're in a pipe
         # Output text with extra messages
         else:
             print(f"Key: { format_key_path(key) }")
