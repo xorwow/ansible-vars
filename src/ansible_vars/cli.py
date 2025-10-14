@@ -584,6 +584,9 @@ def resolve_vault_path(search_path: str, create_mode: bool = False, allow_dirs: 
 
 ## CLI logic
 
+if DEFAULT_RESOLVER_ROOT:
+    debug(f"Changed resolver root to { DEFAULT_RESOLVER_ROOT }")
+
 # Print all exceptions unless we're in debug mode
 def _exc_hook(exctype, value, traceback) -> None:
     if config.debug:
@@ -594,6 +597,8 @@ def _exc_hook(exctype, value, traceback) -> None:
 sys.excepthook = _exc_hook
 
 # Load vault keys
+
+debug(f"Inferring available secrets from environment or { config.detection_source or 'present working directory' }")
 
 _explicit_keys: list[VaultKey] = [ VaultKey(passphrase, vault_id=id) for id, passphrase in config.keys ]
 keyring: VaultKeyring = VaultKeyring(
