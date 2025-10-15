@@ -240,6 +240,8 @@ AV_SHORTCUT_MAP='{}' ansible-vars view g:all.yml # resolves to literal `g:all.ym
 AV_SHORTCUT_MAP='{ "m": "my_vars" }' ansible-vars view m:data.yml # resolves to `my_vars/data.yml` via our new shortcut
 ```
 
+Note that the variable will have to be exported to the terminal (`export AV_SHORTCUT_MAP='...'`) for shell auto-completion to work, inline use like in the above example won't properly auto-complete.
+
 ### Action plugin
 
 `ansible-vars` comes with an associated Ansible action plugin that allows you to query and edit vault files from an Ansible task.
