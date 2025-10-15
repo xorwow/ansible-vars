@@ -88,7 +88,10 @@
             value: my_secret_passphrase
             create_path: true
             encrypt: true
-            passphrase: secret
+            vault_secrets:
+              decoyid: super_secret_passphrase
+              testid: mega_super_secret_passphrase
+            encryption_key: testid
           register: result
         - name: Check result
           assert:
@@ -101,7 +104,8 @@
           vault:
             file: /tmp/new_vault.yml
             path: [ auth, login ]
-            passphrase: secret
+            vault_secrets:
+              testid: mega_super_secret_passphrase
           register: result
         - name: Check result
           assert:

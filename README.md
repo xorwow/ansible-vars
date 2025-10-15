@@ -323,7 +323,7 @@ The plugin supports querying ("GET mode") and updating ("SET mode") variables in
     create_path: true # create any non-existent keys as dictionaries along the way
     log_changes: /tmp/backup_changes.yml # logs any changes to this file as encrypted YAML, using the same key as the SET action
 
-- name: Append a complex element to the list data_points
+- name: Append a complex element to the list data_points using a custom encryption key
   vault:
     file: /tmp/data.yml
     create_file: true
@@ -331,8 +331,11 @@ The plugin supports querying ("GET mode") and updating ("SET mode") variables in
     create_path: true
     value: { x: [ 'abc', 'def' ] }
     encrypt: true
-    passphrase: my_secret_passphrase # uses a custom passphrase for encryption
-    log_changes: /tmp # creates a key-unique log file in /tmp based on a portion of the hash of the passphrase
+    vault_secrets: # inserted into the keyring before any auto-detected secrets
+        exp_vaults: my_secret_passphrase
+        prod_vaults: my_other_secret_passphrase
+    encryption_key: prod_vaults # custom key for encryption, can reference a key loaded from ansible.cfg or `vault_secrets`
+    log_changes: /tmp # creates a key-unique log file in /tmp with a name based on the `encryption_key` ID
 ```
 
 Beware that newly created vaults are not fully encrypted, but use hybrid encryption. Also note that using Ansible's diff mode may leak secrets to your terminal and attached callback plugins, as the diffs are based on the fully decrypted vault contents.

@@ -52,13 +52,19 @@ class ActionModule(ActionBase):
                 raise ActionError('Requires `file` argument to be an actual file unless `create_file` is set.')
             if 'passphrase' in args and not isinstance(args['passphrase'], str):
                 raise ActionError('Requires `passphrase` argument to be a str secret.')
+            if 'passphrase' in args:
+                self._display.warning('The `passphrase` argument has been deprecated in favor of `vault_secrets` and `encryption_key`.')
+            if 'vault_secrets' in args and not isinstance(args['vault_secrets'], dict):
+                raise ActionError('Requires `vault_secrets` argument to be a dict mapping vault IDs to passphrases.')
+            if 'passphrase' in args and 'vault_secrets' in args:
+                raise ActionError('`passphrase` and `vault_secrets` are mutually exclusive.')
 
             # Validate GET args
             if set_mode and 'default' in args:
                 self._display.warning('Ignoring `default` argument as we\'re setting a value.')
 
             # Validate SET args
-            for _arg in ( 'value', 'encrypt', 'create_path', 'log_changes' ):
+            for _arg in ( 'value', 'encrypt', 'encryption_key', 'create_path', 'log_changes' ):
                 if not set_mode and _arg in args:
                     self._display.warning(f"Ignoring `{ _arg }` argument as we\'re not setting a value.")
             if 'encrypt' in args and not isinstance(args['encrypt'], bool):
@@ -67,6 +73,10 @@ class ActionModule(ActionBase):
                 raise ActionError('Requires `create_path` argument to be a bool.')
             if 'log_changes' in args and not isinstance(args['log_changes'], str):
                 raise ActionError('Requires `log_changes` argument to be a dir or file path.')
+            if 'encryption_key' in args and not isinstance(args['encryption_key'], str):
+                raise ActionError('Requires `encryption_key` argument to be a vault ID str.')
+            if 'passphrase' in args and 'encryption_key' in args:
+                raise ActionError('`passphrase` and `encryption_key` are mutually exclusive.')
 
             # Collect common args
             file: str = args['file']
@@ -74,7 +84,8 @@ class ActionModule(ActionBase):
                 file = os.path.join(base_dir, file)
             path: tuple[str | int] = tuple(args['path'] if isinstance(args['path'], list) else [ args['path'] ])
             create_file: bool = args.get('create_file', False)
-            passphrase: str = args.get('passphrase', None)
+            passphrase: str | None = args.get('passphrase', None)
+            vault_secrets: dict[str, str] = args.get('vault_secrets', {})
 
             # Collect GET args
             default: Any = args.get('default', OMITTED)
@@ -82,6 +93,7 @@ class ActionModule(ActionBase):
             # Collect SET args
             value: Any = args.get('value', OMITTED)
             encrypt: bool = args.get('encrypt', True)
+            encryption_key: str | None = args.get('encryption_key', args.get('passphrase', None))
             create_path: bool = args.get('create_path', True)
             log_changes: str | None = args.get('log_changes', None)
 
@@ -94,11 +106,12 @@ class ActionModule(ActionBase):
 
             # Load secrets
             config_dir: str = os.path.dirname(CONFIG_PATH) if CONFIG_PATH else (task_vars or {}).get('playbook_dir', None)
-            keyring: VaultKeyring = VaultKeyring(detection_source=config_dir)
-            if passphrase:
-                key: VaultKey = VaultKey(passphrase, sha1(passphrase.encode()).hexdigest()[:8])
-                keyring.keys.insert(0, key)
-                keyring.default_encryption_key = key
+            secrets: list[VaultKey] = [ VaultKey(_pass, _id) for _id, _pass in vault_secrets.items() ]
+            if passphrase: # `passphrase` has been deprecated
+                secrets = [ VaultKey(passphrase, sha1(passphrase.encode()).hexdigest()[:8]) ]
+            keyring: VaultKeyring = VaultKeyring(keys=secrets, detection_source=config_dir)
+            if encryption_key:
+                keyring.default_encryption_key = keyring.key_by_id(encryption_key)
 
             # Load vault
             if not os.path.isfile(file) and create_file:

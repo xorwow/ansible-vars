@@ -42,8 +42,22 @@ options:
       - Defaults to the first auto-detected vault key if not provided.
       - Auto-detection tries to infer keys from your C(ansible.cfg).
       - Also used for the C(log_changes) option.
+    deprecated:
+      removed_in: 2.19.2
+      why: To encourage referencing proper vault IDs, this has been replaced by C(vault_secrets) and C(encryption_key).
+      alternative: Use C(vault_secrets) and C(encryption_key) instead.
     required: false
     type: str
+  vault_secrets:
+    description:
+      - Allows you to manually add vault secrets to the list of auto-detected ones.
+      - Auto-detection tries to infer keys from your C(ansible.cfg).
+      - Expects a dict mapping vault IDs to passphrases. These secrets will be inserted before any auto-detected secrets.
+      - The first loaded secret is used for encryption if C(encryption_key) is not set. Also affects the C(log_changes) option.
+      - All loaded secrets are tried for decryption.
+    required: false
+    type: dict
+    elements: str
   # GET options
   default:
     description:
@@ -62,6 +76,14 @@ options:
       - Ansible only supports encrypting string values. Objects are traversed and string leaves encrypted. Numbers are left plain.
     type: bool
     default: true
+  encryption_key:
+    description:
+      - Vault ID of the secret that should be used for encryption of the C(value) and the C(log_changes) log (SET mode only).
+      - The first loaded secret is used for encryption if C(encryption_key) is not set.
+      - Can reference an auto-detected secret or one added manually via the C(vault_secrets) option.
+      - See C(vault_secrets) for more details about secret loading.
+    required: false
+    type: str
   create_path:
     description:
       - Whether to create missing path segments as dictionaries (SET mode only).
@@ -71,11 +93,11 @@ options:
   log_changes:
     description:
       - Optional path to a log file or directory where changes will be recorded as encrypted YAML (SET mode only).
-      - Mixing encryption keys / passphrases within a log is not supported.
+      - Mixing encryption keys / passphrases within a log is not supported. You can set an explicit one to use via C(encryption_key).
       - When a directory is given, a file will be created based on the used encryption key to ensure key-unique logs.
       - For auto-detected keys, file names will be based on the vault ID associated with them.
-      - For an explicit C(passphrase), the file name is based on the first 8 chars of the secret's SHA-1 hash.
-      - Plain logging is not supported, an encryption key must be present either from auto-detection or C(passphrase).
+      - For an explicit C(passphrase) (deprecated), the file name is based on the first 8 chars of the secret's SHA-1 hash.
+      - Plain logging is not supported, an encryption key must be present either from auto-detection or C(vault_secrets).
     required: false
     type: path
 seealso:
@@ -89,7 +111,7 @@ notes:
   - Beware that running this action in diff mode may leak secrets to your terminal and attached callback plugins.
   - This is only a module stub, used for documentation. Only the associated C(vault) action plugin is executable.
   - Setting values might impact comments and Jinja2 blocks around the affected area of the vault. See C(ansible-vars) documentation.
-  - This plugin does not work well for concurrently modifying the same vault. Use C(serial: 1) or C(throttle: 1) where applicable.
+  - This plugin does not work well for concurrently modifying the same vault. Set C(serial) or C(throttle) to 1 where applicable.
 '''
 
 # Beware: this must be a pure raw string without type hints, as `ansible-doc` performs "dumb" parsing of the raw text in this file
@@ -123,7 +145,7 @@ EXAMPLES = r'''
     create_path: true # create any non-existent keys as dictionaries along the way
     log_changes: /tmp/backup_changes.yml # logs any changes to this file as encrypted YAML, using the same key as the SET action
 
-- name: Append a complex element to the list data_points
+- name: Append a complex element to the list data_points using a custom encryption key
   vault:
     file: /tmp/data.yml
     create_file: true
@@ -131,8 +153,11 @@ EXAMPLES = r'''
     create_path: true
     value: { x: [ 'abc', 'def' ] }
     encrypt: true
-    passphrase: my_secret_passphrase # uses a custom passphrase for encryption
-    log_changes: /tmp # creates a key-unique log file in /tmp based on a portion of the hash of the passphrase
+    vault_secrets: # inserted into the keyring before any auto-detected secrets
+        exp_vaults: my_secret_passphrase
+        prod_vaults: my_other_secret_passphrase
+    encryption_key: prod_vaults # custom key for encryption, can reference a key loaded from ansible.cfg or `vault_secrets`
+    log_changes: /tmp # creates a key-unique log file in /tmp with a name based on the `encryption_key` ID
 '''
 
 # Beware: this must be a pure raw string without type hints, as `ansible-doc` performs "dumb" parsing of the raw text in this file
