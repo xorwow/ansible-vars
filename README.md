@@ -270,13 +270,15 @@ You can now use `ansible-doc -t module vault` to get a formatted view of the plu
 To keep the documentation up-to-date with changes in the original package, you can use a provided helper function, which will print a warning if the documentation is outdated. Amend your action plugin as follows:
 
 ```py
+from pathlib import Path
+
 # Import real action plugin
 __all__: list[str] = [ 'ActionModule' ]
 from ansible_vars.ansible_plugins.action.vault import ActionModule, check_docs_outdated
 
 # Check for outdated documentation due to the manual copying/linking of the documentation module stub
-this_file: str = Path(__file__)
-module_path: str = str(p.absolute().parents[1] / 'modules' / p.name) # ../modules/vault.py
+this_file: Path = Path(__file__)
+module_path: str = str(this_file.absolute().parents[1] / 'modules' / this_file.name) # ../modules/vault.py
 check_docs_outdated(module_path)
 ```
 
