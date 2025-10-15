@@ -249,7 +249,8 @@ AV_SHORTCUT_MAP='{ "m": "my_vars" }' ansible-vars view m:data.yml # resolves to 
 To install it, add a file called `vault.py` to your Ansible action plugin folder, e.g. `$ANSIBLE_HOME/plugins/action`, with the following content:
 
 ```py
-from ansible_vars.ansible_plugins.action.vault import ActionModule # noqa: F401
+__all__: list[str] = [ 'ActionModule' ]
+from ansible_vars.ansible_plugins.action.vault import ActionModule
 ```
 
 This loads the real action plugin from the `ansible_vars.ansible_plugins` library.
@@ -269,17 +270,13 @@ You can now use `ansible-doc -t module vault` to get a formatted view of the plu
 To keep the documentation up-to-date with changes in the original package, you can use a provided helper function, which will print a warning if the documentation is outdated. Amend your action plugin as follows:
 
 ```py
-import os.path
-
 # Import real action plugin
-from ansible_vars.ansible_plugins.action.vault import ActionModule, check_docs_outdated # noqa: F401
+__all__: list[str] = [ 'ActionModule' ]
+from ansible_vars.ansible_plugins.action.vault import ActionModule, check_docs_outdated
 
 # Check for outdated documentation due to the manual copying/linking of the documentation module stub
-this_file: str = os.path.abspath(__file__)
-module_path: str = os.path.abspath(
-    # ../modules/vault.py
-    os.path.join(os.path.dirname(this_file), os.path.pardir, 'modules', os.path.basename(this_file))
-)
+this_file: str = Path(__file__)
+module_path: str = str(p.absolute().parents[1] / 'modules' / p.name) # ../modules/vault.py
 check_docs_outdated(module_path)
 ```
 
