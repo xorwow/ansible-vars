@@ -329,7 +329,7 @@ The plugin supports querying ("GET mode") and updating ("SET mode") variables in
     create_file: true
     path: [ data_points, +, raw ] # + is a special symbol: if a list is encountered here, append to it
     create_path: true
-    value: { x: [ 12.34, 56.78 ] }
+    value: { x: [ 'abc', 'def' ] }
     encrypt: true
     passphrase: my_secret_passphrase # uses a custom passphrase for encryption
     log_changes: /tmp # creates a key-unique log file in /tmp based on a portion of the hash of the passphrase
