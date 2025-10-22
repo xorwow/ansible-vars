@@ -49,6 +49,8 @@ sudo apt install pipx
 pipx install ansible-vars
 ```
 
+Beware that this method only installs the CLI application, not the library.
+
 ### Shell completion
 
 For `bash` and `zsh` users, shell completion for `ansible-vars` can be activated by adding this command to your shell RC file:
