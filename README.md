@@ -325,10 +325,9 @@ The plugin supports querying ("GET mode") and updating ("SET mode") variables in
     create_path: true # create any non-existent keys as dictionaries along the way
     log_changes: /tmp/backup_changes.yml # logs any changes to this file as encrypted YAML, using the same key as the SET action
 
-- name: Append a complex element to the list data_points using a custom encryption key
+- name: Append a complex element to an existing list data_points using a custom encryption key
   vault:
     file: /tmp/data.yml
-    create_file: true
     path: [ data_points, +, raw ] # + is a special symbol: if a list is encountered here, append to it
     create_path: true
     value: { x: [ 'abc', 'def' ] }
