@@ -19,10 +19,6 @@ class YAMLFormatError(Exception):
 
 # VaultKey management
 
-class KeyExistsError(KeyError):
-    '''The key you wish to create already exists, but overwriting it is disallowed.'''
-    pass
-
 class NoVaultKeysError(Exception):
     '''No vault keys are available for en-/decryption.'''
     pass
@@ -33,4 +29,10 @@ class NoMatchingVaultKeyError(Exception):
 
 class VaultKeyMatchError(Exception):
     '''Vault key did not match the ciphertext.'''
+    pass
+
+# Vault operations
+
+class KeyExistsError(KeyError):
+    '''The key you wish to create already exists, but overwriting it is disallowed.'''
     pass
