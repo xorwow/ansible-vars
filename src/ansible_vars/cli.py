@@ -747,6 +747,13 @@ if config.command in [ 'create', 'edit' ]:
                 # Re-load vault from edited content and save to original location
                 edit_file.seek(0)
                 new_editable: str = edit_file.read()
+                # Check if we're dealing with an empty file and warn any user trying to enable full encryption
+                if vault.full_encryption and not VaultFile._strip_header(new_editable).strip():
+                    print('Beware that an empty file won\'t preserve full encryption.', Color.MEH, stderr=True)
+                # Save the new vault if anything changed
+                # XXX We're not checking if anything else changed (namely the secrets/salt), because we can't infer previous salts
+                #     This means that editing a file with a different key won't rekey the file, which is suboptimal
+                #     But it also means editing a file without changing it won't update all keys with a new random salt, which is good
                 if editable != new_editable:
                     try:
                         new_vault = VaultFile.from_editable(vault, new_editable)

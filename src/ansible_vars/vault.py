@@ -135,15 +135,20 @@ class Vault():
     @classmethod
     def from_editable(Vault: Type['Vault'], prev_vault: 'Vault', edited_content: str) -> 'Vault':
         '''Converts a YAML vault edited from a `Vault.as_editable` template into a new `Vault`.'''
-        # Remove static header (try removing without trailing newline too just in case)
-        edited_content = edited_content.replace(EDIT_MODE_HEADER, '', 1)
-        edited_content = edited_content.replace(EDIT_MODE_HEADER.strip('\n'), '', 1)
+        # Remove header comments
+        edited_content = Vault._strip_header(edited_content)
         # Init new vault with edited YAML
         # ProtoEncryptedVar conversion is done in vault parser, so no need to do it here
         vault = Vault(edited_content, keyring=prev_vault.keyring)
         # Copy relevant settings from old vault
         vault.full_encryption = prev_vault.full_encryption
         return vault
+
+    @staticmethod
+    def _strip_header(content: str) -> str:
+        '''Strips the edit mode header from an editable.'''
+        # Remove static header (try removing without trailing newline too just in case)
+        return content.replace(EDIT_MODE_HEADER, '', 1).replace(EDIT_MODE_HEADER.strip('\n'), '', 1)
 
     @staticmethod
     def _parse(yaml_content: str, keyring: VaultKeyring) -> tuple[YAML, CommentedMap, bool]:
