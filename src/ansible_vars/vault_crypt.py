@@ -30,7 +30,7 @@ class VaultKey():
         # Use default vault ID if none is supplied
         self.id: str = Ansible.DEFAULT_VAULT_IDENTITY if vault_id is None else vault_id  # type: ignore
         # Convert passphrase to VaultSecret if necessary
-        self.secret: VaultSecret = secret if type(secret) is VaultSecret else VaultSecret(str(secret).encode('utf-8'))
+        self.secret: VaultSecret = secret if isinstance(secret, VaultSecret) else VaultSecret(str(secret).encode('utf-8'))
         # Pass secret to VaultLib (we need an individual instance because `VaultLib.decrypt` doesn't take an explicit secret)
         self._vaultlib: VaultLib = VaultLib([ self.to_ansible_secret() ])
 
