@@ -1115,8 +1115,11 @@ if config.command in [ 'diff', 'changes' ]:
 
 if config.command == 'file-daemon':
     target_path: str = os.path.abspath(config.target_root)
-    if os.path.isfile(target_path) or (os.path.isdir(target_path) and os.listdir(target_path)):
+    if (is_file := os.path.isfile(target_path)) or (os.path.isdir(target_path) and os.listdir(target_path)):
         if config.force:
+            if is_file:
+                os.unlink(target_path)
+                os.mkdir(target_path, mode=0o700)
             for child in map(lambda c: os.path.join(target_path, c), os.listdir(target_path)):
                 if os.path.isfile(child):
                     os.unlink(child)
