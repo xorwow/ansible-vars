@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ansible-vars"
-version = "1.0.23"
+version = "1.0.24"
 authors = [
   { name="xorwow", email="pip@xorwow.de" },
 ]
