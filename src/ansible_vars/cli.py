@@ -57,8 +57,8 @@ ansible-vars grep '# TODO' h:
 ansible-vars diff my_vault.yml.old my_vault.yml
 # Get the decrypted value of a vault's key path `root['my_key'][0]['other_key']` as JSON
 ansible-vars get my_vault.yml my_key '[0]' other_key
-# Start a daemon which syncs the decrypted contents of all vault files in `./host_vars`, `./group_vars`, and `./vars` to a target directory
-ansible-vars file-daemon /tmp/decrypted/
+# Start a daemon which syncs the decrypted contents of all vault files in `./host_vars` to `/tmp/decrypted/hvars`
+ansible-vars file-daemon -s h: hvars /tmp/decrypted/
 
 tips:
 
@@ -169,7 +169,6 @@ JSON mode formatting:
     'cmd_daemon': '''
 Creates a temporary directory at the target root directory path and syncs the selected source vaults and vault directories into the target in decrypted form.
 Each added source file or directory is described by its vault path and a relative target path within the target root directory.
-By default, the `./host_vars`, `./group_vars`, and `./vars` directories are automatically included if they exist.
 Two sources can not have the same relative target path, i.e. directory merging is not supported.
 Changes in the source(s) are synced to the target(s), including creating/removing/editing/moving files, but not the other way around.
 The sync works as long as the command is running, after which the target root directory is deleted.
@@ -436,7 +435,6 @@ cmd_daemon.add_argument(
     help='vault file or folder to sync and rel. path in <target root> to sync into'
 ).completer = _prefixed_path_completer # type: ignore
 cmd_daemon.add_argument('--no-recurse', '-n', action='store_false', dest='recurse', help='don\'t recurse into source folders\' subfolders')
-cmd_daemon.add_argument('--no-default-dirs', '-N', action='store_false', dest='include_default_dirs', help='don\'t include default sync sources')
 cmd_daemon.add_argument('--force', '-f', action='store_true', help='if the target root already exists and is not empty, delete its contents')
 
 cmd_get = commands.add_parser(
@@ -1128,13 +1126,12 @@ if config.command == 'file-daemon':
         else:
             raise FileExistsError(f"Cannot create sync root at { target_path } as the path already exist and is not empty")
     # Resolve sources
-    if config.include_default_dirs:
-        for dir_path in ( 'host_vars', 'group_vars', 'vars' ):
-            if os.path.isdir(dir_path):
-                config.sources.append([ os.path.abspath(dir_path), dir_path ])
     sources: set[tuple[str, str]] = {
         ( resolve_vault_path(path, allow_dirs=True), os.path.abspath(os.path.join(target_path, subtarget)) ) for path, subtarget in config.sources 
     }
+    if not sources:
+        print('No sources selected for file syncing. Exiting.', Color.MEH)
+        exit()
     # Validity checks
     for path, subtarget in sources:
         if not Path(subtarget).is_relative_to(target_path):
